@@ -47,7 +47,7 @@ if not exist "%ROOT%backend\venv\Scripts\activate.bat" (
 
 REM -- Start backend --
 echo Starting FPGA Register Analyzer...
-start "FPGA Analyzer" cmd /k "cd /d "%ROOT%backend" && call venv\Scripts\activate.bat && echo. && echo  FPGA Register Analyzer running on http://localhost:8000 && echo  Press Ctrl+C to stop. && echo. && python -m uvicorn app.main:app --host 127.0.0.1 --port 8000"
+start "FPGA Analyzer" cmd /k ""%ROOT%start_backend.bat""
 
 REM -- Open browser after delay --
 timeout /t 4 /nobreak >nul

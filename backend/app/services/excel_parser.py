@@ -85,44 +85,62 @@ def parse_excel(file_path: Union[str, Path]) -> Tuple[Dict[str, RegisterInfo], L
     ordered_bitfields: list[BitFieldInfo] = []
     current_addr: str | None = None
 
+    _EMPTY_STRINGS = {"none", "null", "n/a", "na", ""}
+
     def _cell(row: tuple, idx: int):
         return row[idx] if idx >= 0 and idx < len(row) else None
+
+    def _val(raw) -> str | None:
+        """Return None if the cell is empty or a known placeholder string."""
+        if raw is None:
+            return None
+        s = str(raw).strip()
+        if s.lower() in _EMPTY_STRINGS:
+            return None
+        return s
 
     for row in rows[header_row_idx + 1:]:
         # Skip completely empty rows
         if not row or all(c is None for c in row):
             continue
 
-        addr_val = _cell(row, addr_col)
-        reg_val = _cell(row, reg_col)
-        ini_val = _cell(row, ini_col)
-        bits_val = _cell(row, bits_col)
-        member_val = _cell(row, member_col)
+        addr_val = _val(_cell(row, addr_col))
+        reg_val  = _val(_cell(row, reg_col))
+        ini_raw  = _cell(row, ini_col)
+        bits_raw = _cell(row, bits_col)
+        member_val = _val(_cell(row, member_col))
+
+        # Treat row as empty if all meaningful columns are placeholder
+        if addr_val is None and reg_val is None and member_val is None:
+            continue
+
+        ini_val  = None if ini_raw  is None else str(ini_raw).strip()
+        bits_val = None if bits_raw is None else str(bits_raw).strip()
 
         # New register block
-        if addr_val is not None and str(addr_val).strip():
-            raw_addr = str(addr_val).strip().upper()
+        if addr_val:
+            raw_addr = addr_val.upper()
             # Normalise to 4 hex chars, stripping any leading 0x
             raw_addr = raw_addr.lstrip("0X").lstrip("0X")  # handle "0x" prefix
             if raw_addr == "":
                 raw_addr = "0"
             current_addr = raw_addr.zfill(4)
 
-        if reg_val is not None and str(reg_val).strip() and current_addr is not None:
+        if reg_val and current_addr is not None:
             if current_addr not in registers:
-                registers[current_addr] = RegisterInfo(addr=current_addr, name=str(reg_val).strip())
+                registers[current_addr] = RegisterInfo(addr=current_addr, name=reg_val)
 
-        if member_val is not None and str(member_val).strip() and bits_val is not None and current_addr is not None:
+        if member_val and bits_val and current_addr is not None:
             try:
                 low_bit, width = _parse_bits(str(bits_val))
             except (ValueError, IndexError):
                 continue  # skip malformed rows
 
             bf = BitFieldInfo(
-                name=str(member_val).strip(),
+                name=member_val,
                 low_bit=low_bit,
                 width=width,
-                ini=str(ini_val).strip() if ini_val is not None else "0x0",
+                ini=ini_val if ini_val is not None else "0x0",
                 register_name=registers[current_addr].name if current_addr in registers else "",
                 register_addr=current_addr,
             )
