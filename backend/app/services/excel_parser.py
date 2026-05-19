@@ -49,19 +49,22 @@ def parse_excel(file_path: Union[str, Path]) -> Tuple[Dict[str, RegisterInfo], L
     registers_by_addr maps uppercase 4-char addr -> RegisterInfo.
     ordered_bitfields is a flat list in address/definition order (used as column order).
     """
-    wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
+    # read_only=False: avoids XML-stream-consumed issue when BytesIO is iterated twice
+    wb = openpyxl.load_workbook(file_path, read_only=False, data_only=True)
 
     # Search all sheets for one containing an ADDR column header
-    ws = None
+    target_sheet_name = None
     for ws_candidate in wb.worksheets:
-        peek = list(ws_candidate.iter_rows(values_only=True, max_row=30))
+        peek = list(ws_candidate.iter_rows(values_only=True, max_row=50))
         if any(row and any(c is not None and str(c).strip().upper() == "ADDR" for c in row) for row in peek):
-            ws = ws_candidate
+            target_sheet_name = ws_candidate.title
             break
-    if ws is None:
-        ws = wb.active  # fallback
+    ws = wb[target_sheet_name] if target_sheet_name else wb.active
+
+    print(f"[excel_parser] sheets={[s.title for s in wb.worksheets]}, selected={ws.title!r}")
 
     rows = list(ws.iter_rows(values_only=True))
+    print(f"[excel_parser] total rows={len(rows)}")
     # Find header row (contains "ADDR" anywhere in the row)
     header_row_idx = None
     for i, row in enumerate(rows):
@@ -89,6 +92,10 @@ def parse_excel(file_path: Union[str, Path]) -> Tuple[Dict[str, RegisterInfo], L
     ini_col = col("INI")
     bits_col = col("BITS")
     member_col = col("MEMBER")
+
+    print(f"[excel_parser] header_row={header_row_idx}, cols: ADDR={addr_col} REGISTER={reg_col} INI={ini_col} BITS={bits_col} MEMBER={member_col}")
+    if header_row_idx is not None and header_row_idx < len(rows):
+        print(f"[excel_parser] header_row_content={rows[header_row_idx]}")
 
     registers: dict[str, RegisterInfo] = {}
     ordered_bitfields: list[BitFieldInfo] = []
@@ -158,4 +165,5 @@ def parse_excel(file_path: Union[str, Path]) -> Tuple[Dict[str, RegisterInfo], L
             ordered_bitfields.append(bf)
 
     wb.close()
+    print(f"[excel_parser] result: {len(registers)} registers, {len(ordered_bitfields)} bitfields")
     return registers, ordered_bitfields
