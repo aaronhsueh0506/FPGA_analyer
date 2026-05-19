@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Dict, List, Optional, Tuple, Union
+from typing import Dict, List, Tuple, Union
 
 import openpyxl
 
@@ -61,6 +61,7 @@ def parse_excel(file_path: Union[str, Path]) -> Tuple[Dict[str, RegisterInfo], L
 
     for ws_candidate in wb.worksheets:
         peek = list(ws_candidate.iter_rows(values_only=True, max_row=50))
+        print(f"[excel_parser] scanning sheet={ws_candidate.title!r}, peek_rows={len(peek)}")
         for row_idx, row in enumerate(peek):
             if not row:
                 continue
@@ -69,12 +70,18 @@ def parse_excel(file_path: Union[str, Path]) -> Tuple[Dict[str, RegisterInfo], L
                 for c in row
                 if c is not None and str(c).strip()
             }
+            if cells_upper:
+                print(f"[excel_parser]   row{row_idx} non-empty cells: {cells_upper}")
             if "ADDR" in cells_upper and cells_upper & _COMPANION_COLS:
                 target_sheet_name = ws_candidate.title
                 header_from_scan = row_idx
+                print(f"[excel_parser]   => MATCH: header at row {row_idx}")
                 break
         if target_sheet_name:
             break
+
+    if target_sheet_name is None:
+        print(f"[excel_parser] WARNING: no sheet found with ADDR + companion column; falling back to active sheet")
 
     ws = wb[target_sheet_name] if target_sheet_name else wb.active
 

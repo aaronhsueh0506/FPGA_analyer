@@ -17,9 +17,12 @@ router = APIRouter(prefix="/api/registers", tags=["registers"])
 def _xls_to_xlsx(xls_bytes: bytes) -> bytes:
     """Convert legacy .xls bytes to .xlsx bytes, preserving cell values."""
     wb_xls = xlrd.open_workbook(file_contents=xls_bytes)
+    print(f"[xls_to_xlsx] nsheets={wb_xls.nsheets}, names={wb_xls.sheet_names()}")
     wb_xlsx = openpyxl.Workbook()
     for sheet_idx in range(wb_xls.nsheets):
         ws_xls = wb_xls.sheet_by_index(sheet_idx)
+        visibility = wb_xls.sheet_visibility(sheet_idx)  # 0=visible,1=hidden,2=very hidden
+        print(f"[xls_to_xlsx] sheet[{sheet_idx}] name={ws_xls.name!r} visibility={visibility} nrows={ws_xls.nrows} ncols={ws_xls.ncols}")
         ws_xlsx = wb_xlsx.active if sheet_idx == 0 else wb_xlsx.create_sheet()
         ws_xlsx.title = ws_xls.name
         for row in range(ws_xls.nrows):
@@ -33,8 +36,21 @@ def _xls_to_xlsx(xls_bytes: bytes) -> bytes:
                 else:
                     val = cell.value
                 ws_xlsx.cell(row=row + 1, column=col_idx + 1, value=val)
+        # Print first non-empty rows for diagnosis
+        sample_rows = []
+        for r in range(min(10, ws_xls.nrows)):
+            row_vals = [ws_xls.cell(r, c).value for c in range(ws_xls.ncols)]
+            if any(v for v in row_vals if v is not None and str(v).strip()):
+                sample_rows.append(f"    row{r}: {row_vals}")
+            if len(sample_rows) >= 3:
+                break
+        if sample_rows:
+            print(f"[xls_to_xlsx] first non-empty rows of sheet {ws_xls.name!r}:")
+            for s in sample_rows:
+                print(s)
     buf = io.BytesIO()
     wb_xlsx.save(buf)
+    print(f"[xls_to_xlsx] conversion done, xlsx size={len(buf.getvalue())} bytes")
     return buf.getvalue()
 
 
