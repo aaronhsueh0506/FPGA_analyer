@@ -1,6 +1,9 @@
+import io
 from pathlib import Path
 from datetime import datetime
 
+import xlrd
+import openpyxl
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
@@ -9,6 +12,30 @@ from ..models import RegisterDefinitionORM, RegisterDefinitionOut
 from ..services.excel_parser import parse_excel
 
 router = APIRouter(prefix="/api/registers", tags=["registers"])
+
+
+def _xls_to_xlsx(xls_bytes: bytes) -> bytes:
+    """Convert legacy .xls bytes to .xlsx bytes, preserving cell values."""
+    wb_xls = xlrd.open_workbook(file_contents=xls_bytes)
+    wb_xlsx = openpyxl.Workbook()
+    for sheet_idx in range(wb_xls.nsheets):
+        ws_xls = wb_xls.sheet_by_index(sheet_idx)
+        ws_xlsx = wb_xlsx.active if sheet_idx == 0 else wb_xlsx.create_sheet()
+        ws_xlsx.title = ws_xls.name
+        for row in range(ws_xls.nrows):
+            for col_idx in range(ws_xls.ncols):
+                cell = ws_xls.cell(row, col_idx)
+                if cell.ctype == xlrd.XL_CELL_NUMBER:
+                    val = cell.value
+                    val = int(val) if val == int(val) else val
+                elif cell.ctype == xlrd.XL_CELL_EMPTY:
+                    val = None
+                else:
+                    val = cell.value
+                ws_xlsx.cell(row=row + 1, column=col_idx + 1, value=val)
+    buf = io.BytesIO()
+    wb_xlsx.save(buf)
+    return buf.getvalue()
 
 
 @router.get("", response_model=list[RegisterDefinitionOut])
@@ -22,16 +49,24 @@ async def upload_register(
     file: UploadFile = File(...),
     db: Session = Depends(get_db),
 ):
-    if not file.filename or not file.filename.lower().endswith(".xlsx"):
-        raise HTTPException(status_code=400, detail="Only .xlsx files are accepted")
+    fname = file.filename or ""
+    if not fname.lower().endswith((".xlsx", ".xls")):
+        raise HTTPException(status_code=400, detail="Only .xlsx or .xls files are accepted")
 
     content = await file.read()
 
+    # Auto-convert .xls -> .xlsx
+    if fname.lower().endswith(".xls"):
+        try:
+            content = _xls_to_xlsx(content)
+        except Exception as exc:
+            raise HTTPException(status_code=422, detail=f"Cannot convert .xls: {exc}")
+        fname = fname[:-4] + ".xlsx"
+
     # Save file to disk
     reg_dir = DATA_DIR / "registers"
-    # Use a timestamp-based unique name to avoid collisions
     ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
-    dest = reg_dir / f"{ts}_{file.filename}"
+    dest = reg_dir / f"{ts}_{fname}"
     dest.write_bytes(content)
 
     # Parse to get counts
@@ -41,11 +76,11 @@ async def upload_register(
         dest.unlink(missing_ok=True)
         raise HTTPException(status_code=422, detail=f"Cannot parse Excel: {exc}")
 
-    name = Path(file.filename).stem
+    name = Path(fname).stem
 
     record = RegisterDefinitionORM(
         name=name,
-        original_filename=file.filename,
+        original_filename=fname,
         file_path=str(dest),
         register_count=len(registers),
         bitfield_count=len(bitfields),
