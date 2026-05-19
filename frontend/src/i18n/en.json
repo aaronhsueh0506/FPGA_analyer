@@ -50,6 +50,8 @@
     "colUploadedAt": "Uploaded At",
     "colActions": "Actions",
     "actionDelete": "Delete",
+    "actionRename": "Rename",
+    "renameFailed": "Rename failed",
     "versionName": "Version name (optional)",
     "versionNamePlaceholder": "e.g. v1.0 or leave blank to use filename",
     "versionNameHint": "Leave blank to use the filename as name",

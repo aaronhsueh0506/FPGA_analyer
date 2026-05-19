@@ -82,6 +82,10 @@ class BatchDetailOut(BaseModel):
     warnings: List[str]
 
 
+class RegisterRenameIn(BaseModel):
+    name: str
+
+
 class VersionOut(BaseModel):
     version: str
     build_date: str

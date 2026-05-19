@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { listRegisters, uploadRegister, deleteRegister, type RegisterDefinition } from '../api/registers'
+import { listRegisters, uploadRegister, deleteRegister, renameRegister, type RegisterDefinition } from '../api/registers'
 
 export default function Registers() {
   const { t } = useTranslation()
@@ -11,6 +11,8 @@ export default function Registers() {
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
   const [versionName, setVersionName] = useState('')
+  const [editingId, setEditingId] = useState<number | null>(null)
+  const [editingName, setEditingName] = useState('')
 
   const load = () => {
     listRegisters()
@@ -44,6 +46,28 @@ export default function Registers() {
       setItems((prev) => prev.filter((i) => i.id !== id))
     } catch (e: any) {
       alert(e?.response?.data?.detail ?? t('registers.deleteFailed'))
+    }
+  }
+
+  const startEdit = (r: RegisterDefinition) => {
+    setEditingId(r.id)
+    setEditingName(r.name)
+  }
+
+  const cancelEdit = () => {
+    setEditingId(null)
+    setEditingName('')
+  }
+
+  const confirmEdit = async (id: number) => {
+    const trimmed = editingName.trim()
+    if (!trimmed) return
+    try {
+      const updated = await renameRegister(id, trimmed)
+      setItems((prev) => prev.map((i) => (i.id === id ? updated : i)))
+      cancelEdit()
+    } catch (e: any) {
+      alert(e?.response?.data?.detail ?? t('registers.renameFailed'))
     }
   }
 
@@ -115,7 +139,41 @@ export default function Registers() {
               <tbody>
                 {items.map((r) => (
                   <tr key={r.id}>
-                    <td>{r.name}</td>
+                    <td>
+                      {editingId === r.id ? (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          <input
+                            type="text"
+                            className="prefix-input"
+                            value={editingName}
+                            autoFocus
+                            onChange={(e) => setEditingName(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') confirmEdit(r.id)
+                              if (e.key === 'Escape') cancelEdit()
+                            }}
+                            style={{ width: 180 }}
+                          />
+                          <button className="btn btn-sm btn-primary" onClick={() => confirmEdit(r.id)}>
+                            {t('common.confirm')}
+                          </button>
+                          <button className="btn btn-sm" onClick={cancelEdit}>
+                            {t('common.cancel')}
+                          </button>
+                        </span>
+                      ) : (
+                        <span style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                          {r.name}
+                          <button
+                            className="btn btn-sm"
+                            style={{ padding: '1px 8px', fontSize: 11 }}
+                            onClick={() => startEdit(r)}
+                          >
+                            {t('registers.actionRename')}
+                          </button>
+                        </span>
+                      )}
+                    </td>
                     <td className="mono">{r.original_filename}</td>
                     <td>{r.register_count}</td>
                     <td>{r.bitfield_count}</td>

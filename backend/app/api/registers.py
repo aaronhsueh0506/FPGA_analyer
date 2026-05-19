@@ -8,7 +8,7 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from ..db import get_db, DATA_DIR
-from ..models import RegisterDefinitionORM, RegisterDefinitionOut
+from ..models import RegisterDefinitionORM, RegisterDefinitionOut, RegisterRenameIn
 from ..services.excel_parser import parse_excel
 
 router = APIRouter(prefix="/api/registers", tags=["registers"])
@@ -124,6 +124,20 @@ async def upload_register(
         bitfield_count=len(bitfields),
     )
     db.add(record)
+    db.commit()
+    db.refresh(record)
+    return record
+
+
+@router.patch("/{register_id}", response_model=RegisterDefinitionOut)
+def rename_register(register_id: int, payload: RegisterRenameIn, db: Session = Depends(get_db)):
+    record = db.get(RegisterDefinitionORM, register_id)
+    if record is None:
+        raise HTTPException(status_code=404, detail="Register not found")
+    new_name = (payload.name or "").strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+    record.name = new_name
     db.commit()
     db.refresh(record)
     return record

@@ -50,6 +50,8 @@
     "colUploadedAt": "上傳時間",
     "colActions": "操作",
     "actionDelete": "刪除",
+    "actionRename": "改名",
+    "renameFailed": "改名失敗",
     "versionName": "版本名稱（可選）",
     "versionNamePlaceholder": "例如 v1.0 或留空以使用檔名",
     "versionNameHint": "留空則自動使用檔名作為名稱",
