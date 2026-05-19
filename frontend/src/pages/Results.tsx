@@ -75,14 +75,33 @@ export default function Results() {
   const [columnModalOpen, setColumnModalOpen] = useState(false)
   const [typeModalOpen, setTypeModalOpen] = useState(false)
 
+  const visibleColsKey = detail ? `fpga-visible-cols-${detail.summary.registerName}` : null
+
   // Initialise range and visible columns once data loads
   useEffect(() => {
     if (!detail) return
     setCaseTo(sortedRows.length)
+
+    const saved = visibleColsKey ? localStorage.getItem(visibleColsKey) : null
+    if (saved) {
+      try {
+        const names: string[] = JSON.parse(saved)
+        const nameSet = new Set(names)
+        const indices = detail.bitFields.map((_, i) => i).filter(i => nameSet.has(detail.bitFields[i].name))
+        if (indices.length > 0) { setVisibleIndices(indices); return }
+      } catch { /* ignore */ }
+    }
     setVisibleIndices(
       detail.bitFields.map((_, i) => i).filter(i => types[detail.bitFields[i].name] !== 'others')
     )
   }, [detail]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Persist visible columns to localStorage whenever they change
+  useEffect(() => {
+    if (!visibleColsKey || !detail || visibleIndices.length === 0) return
+    const names = visibleIndices.map(i => detail.bitFields[i].name)
+    localStorage.setItem(visibleColsKey, JSON.stringify(names))
+  }, [visibleIndices, visibleColsKey, detail])
 
   if (loading) return <div className="page"><div className="empty-state">Loading...</div></div>
   if (error || !detail) return <div className="page"><div className="warning-banner">{error ?? 'Error'}</div></div>

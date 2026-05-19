@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BatchSummary, BitFieldDef } from '../../mock/data'
 import type { TypeMap } from '../../hooks/useBitFieldTypes'
@@ -95,7 +95,18 @@ export default function OverallPanel({ summary, rows, bitFields, types, caseRang
     return out
   }, [bitFields, types, slicedRows])
 
+  const comboKey = `fpga-combo-picked-${summary.registerName}`
+
   const initialPicked = useMemo<number[]>(() => {
+    const saved = localStorage.getItem(comboKey)
+    if (saved) {
+      try {
+        const names: string[] = JSON.parse(saved)
+        const nameSet = new Set(names)
+        const indices = bitFields.map((_, i) => i).filter(i => nameSet.has(bitFields[i].name))
+        if (indices.length >= MIN_FIELDS) return indices
+      } catch { /* ignore */ }
+    }
     const modeIdx: number[] = []
     for (let i = 0; i < bitFields.length; i++) {
       if (types[bitFields[i].name] === 'mode') modeIdx.push(i)
@@ -105,10 +116,15 @@ export default function OverallPanel({ summary, rows, bitFields, types, caseRang
     const fallback: number[] = []
     for (let i = 0; i < Math.min(3, bitFields.length); i++) fallback.push(i)
     return fallback
-  }, [bitFields, types])
+  }, [bitFields, types]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const [pickedFields, setPickedFields] = useState<number[]>(initialPicked)
   const [pickerOpen, setPickerOpen] = useState(false)
+
+  useEffect(() => {
+    const names = pickedFields.map(i => bitFields[i]?.name).filter(Boolean)
+    localStorage.setItem(comboKey, JSON.stringify(names))
+  }, [pickedFields, comboKey, bitFields])
 
   const togglePick = (idx: number) => {
     setPickedFields((prev) =>

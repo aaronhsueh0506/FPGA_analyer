@@ -198,23 +198,18 @@ export const mockBitFields: BitFieldDef[] = [
 ]
 
 /**
- * 預設啟發式：名稱含 `EN` 或 `MODE` 關鍵字（不分大小寫）視為 mode，否則 magnitude。
- * `others` 不會由啟發式產生，僅能由使用者手動指定。
- * 兼容性：保留舊的「只傳 width」呼叫方式（已棄用，視為 magnitude）。
+ * 預設啟發式：ERR / CHKSUM 視為 others，其餘全部視為 mode。
+ * 兼容性：保留舊的「只傳 width」呼叫方式（已棄用，視為 mode）。
  */
 export function defaultBitFieldType(bf: BitFieldDef | number): BitFieldType {
   if (typeof bf === 'number') {
-    // legacy 呼叫；不再啟發式偵測，回傳 magnitude
-    return 'magnitude'
+    return 'mode'
   }
   const upper = bf.name.toUpperCase()
   if (upper.includes('ERR') || upper.includes('CHKSUM')) {
     return 'others'
   }
-  if (/(^|_)EN(_|$)/.test(upper) || upper.endsWith('_EN') || upper.includes('MODE')) {
-    return 'mode'
-  }
-  return 'magnitude'
+  return 'mode'
 }
 
 /**
