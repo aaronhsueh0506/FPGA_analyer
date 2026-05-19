@@ -4,7 +4,7 @@ from datetime import datetime
 
 import xlrd
 import openpyxl
-from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
+from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile
 from sqlalchemy.orm import Session
 
 from ..db import get_db, DATA_DIR
@@ -64,6 +64,7 @@ def list_registers(db: Session = Depends(get_db)):
 @router.post("", response_model=RegisterDefinitionOut)
 async def upload_register(
     file: UploadFile = File(...),
+    name: str = Form(""),
     db: Session = Depends(get_db),
 ):
     fname = file.filename or ""
@@ -113,10 +114,10 @@ async def upload_register(
         dest.unlink(missing_ok=True)
         raise HTTPException(status_code=422, detail=f"Cannot parse Excel: {exc}")
 
-    name = Path(fname).stem
+    effective_name = name.strip() if name and name.strip() else Path(fname).stem
 
     record = RegisterDefinitionORM(
-        name=name,
+        name=effective_name,
         original_filename=fname,
         file_path=str(dest),
         register_count=len(registers),

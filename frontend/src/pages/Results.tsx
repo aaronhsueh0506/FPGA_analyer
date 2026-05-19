@@ -54,6 +54,13 @@ export default function Results() {
 
   const detail = useMemo(() => apiData ? apiToDetail(apiData) : null, [apiData])
 
+  const sortedRows = useMemo(() => {
+    if (!detail) return []
+    return [...detail.rows].sort((a, b) =>
+      a.testCase.localeCompare(b.testCase, undefined, { numeric: true, sensitivity: 'base' })
+    )
+  }, [detail])
+
   const { types, bulkSet, reset } = useBitFieldTypes(
     detail?.summary.registerName ?? '',
     detail?.bitFields ?? []
@@ -71,7 +78,7 @@ export default function Results() {
   // Initialise range and visible columns once data loads
   useEffect(() => {
     if (!detail) return
-    setCaseTo(detail.rows.length)
+    setCaseTo(sortedRows.length)
     setVisibleIndices(
       detail.bitFields.map((_, i) => i).filter(i => types[detail.bitFields[i].name] !== 'others')
     )
@@ -80,12 +87,12 @@ export default function Results() {
   if (loading) return <div className="page"><div className="empty-state">Loading...</div></div>
   if (error || !detail) return <div className="page"><div className="warning-banner">{error ?? 'Error'}</div></div>
 
-  const clampedFrom = Math.max(1, Math.min(caseFrom, detail.rows.length))
-  const clampedTo = Math.max(clampedFrom, Math.min(caseTo || detail.rows.length, detail.rows.length))
+  const clampedFrom = Math.max(1, Math.min(caseFrom, sortedRows.length))
+  const clampedTo = Math.max(clampedFrom, Math.min(caseTo || sortedRows.length, sortedRows.length))
   const caseRange = { from: clampedFrom, to: clampedTo }
-  const rangedRows = detail.rows.slice(clampedFrom - 1, clampedTo)
+  const rangedRows = sortedRows.slice(clampedFrom - 1, clampedTo)
 
-  const showCaseRangeToolbar = tab === 'dual' || tab === 'stats' || tab === 'overall'
+  const showCaseRangeToolbar = tab === 'table' || tab === 'dual' || tab === 'stats' || tab === 'overall'
 
   return (
     <div className="page">
@@ -132,14 +139,14 @@ export default function Results() {
               onChange={(e) => setCaseFrom(Number(e.target.value) || 1)} />
             <span style={{ color: 'var(--text-tertiary)' }}>—</span>
             <input type="number" min={1} max={10000} value={caseTo}
-              onChange={(e) => setCaseTo(Number(e.target.value) || detail.rows.length)} />
+              onChange={(e) => setCaseTo(Number(e.target.value) || sortedRows.length)} />
             <span className="info" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-              / {detail.rows.length}
+              / {sortedRows.length}
             </span>
           </div>
           <div className="divider" />
           <div className="group">
-            <button className="btn btn-sm" onClick={() => { setCaseFrom(1); setCaseTo(detail.rows.length) }}>
+            <button className="btn btn-sm" onClick={() => { setCaseFrom(1); setCaseTo(sortedRows.length) }}>
               {t('results.selectAll')}
             </button>
           </div>
@@ -163,7 +170,7 @@ export default function Results() {
       <ErrorBoundary>
         {tab === 'table' && (
           <ResultsTable
-            rows={detail.rows}
+            rows={rangedRows}
             bitFields={detail.bitFields}
             visibleIndices={visibleIndices}
             format={format}

@@ -208,6 +208,9 @@ export function defaultBitFieldType(bf: BitFieldDef | number): BitFieldType {
     return 'magnitude'
   }
   const upper = bf.name.toUpperCase()
+  if (upper.includes('ERR') || upper.includes('CHKSUM')) {
+    return 'others'
+  }
   if (/(^|_)EN(_|$)/.test(upper) || upper.endsWith('_EN') || upper.includes('MODE')) {
     return 'mode'
   }

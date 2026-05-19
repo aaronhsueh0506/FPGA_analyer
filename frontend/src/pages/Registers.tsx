@@ -10,6 +10,7 @@ export default function Registers() {
   const [error, setError] = useState<string | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [dragOver, setDragOver] = useState(false)
+  const [versionName, setVersionName] = useState('')
 
   const load = () => {
     listRegisters()
@@ -25,8 +26,9 @@ export default function Registers() {
     setUploading(true)
     setError(null)
     try {
-      const created = await uploadRegister(files[0])
+      const created = await uploadRegister(files[0], versionName)
       setItems((prev) => [created, ...prev])
+      setVersionName('')
     } catch (e: any) {
       setError(e?.response?.data?.detail ?? 'Upload failed')
     } finally {
@@ -56,6 +58,23 @@ export default function Registers() {
       <div className="card">
         <h3 className="card-title">{t('registers.uploadTitle')}</h3>
         <p className="card-subtitle">{t('registers.uploadHint')}</p>
+
+        <div style={{ marginBottom: 12 }}>
+          <label style={{ display: 'block', fontSize: 13, color: 'var(--text-secondary)', marginBottom: 4 }}>
+            {t('registers.versionName')}
+          </label>
+          <input
+            type="text"
+            className="prefix-input"
+            placeholder={t('registers.versionNamePlaceholder')}
+            value={versionName}
+            onChange={(e) => setVersionName(e.target.value)}
+            style={{ width: 320 }}
+          />
+          <span style={{ marginLeft: 8, fontSize: 12, color: 'var(--text-tertiary)' }}>
+            {t('registers.versionNameHint')}
+          </span>
+        </div>
 
         <div
           className={`dropzone${dragOver ? ' drag-over' : ''}`}

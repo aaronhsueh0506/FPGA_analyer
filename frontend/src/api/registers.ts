@@ -14,9 +14,10 @@ export async function listRegisters(): Promise<RegisterDefinition[]> {
   return data
 }
 
-export async function uploadRegister(file: File): Promise<RegisterDefinition> {
+export async function uploadRegister(file: File, name?: string): Promise<RegisterDefinition> {
   const form = new FormData()
   form.append('file', file)
+  if (name && name.trim()) form.append('name', name.trim())
   const { data } = await client.post<RegisterDefinition>('/api/registers', form)
   return data
 }
