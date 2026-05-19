@@ -47,7 +47,7 @@ if not exist "%ROOT%backend\venv\Scripts\activate.bat" (
 
 REM -- Start backend --
 echo Starting FPGA Register Analyzer...
-start "FPGA Analyzer" cmd /k ""%ROOT%start_backend.bat""
+start "FPGA Analyzer" /d "%ROOT%backend" cmd /k "call ..\start_backend.bat"
 
 REM -- Open browser after delay --
 timeout /t 4 /nobreak >nul

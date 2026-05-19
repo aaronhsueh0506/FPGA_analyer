@@ -35,7 +35,15 @@ export async function createBatch(
 ): Promise<BatchSummaryAPI> {
   const form = new FormData()
   form.append('register_id', String(registerId))
-  files.forEach((f) => form.append('files', f))
+  files.forEach((f) => {
+    const rel = (f as any).webkitRelativePath as string | undefined
+    if (rel) {
+      // Preserve folder/filename so backend stores "folder/file.dat" as the TestCase name
+      form.append('files', new File([f], rel, { type: f.type }))
+    } else {
+      form.append('files', f)
+    }
+  })
 
   const { data } = await client.post<BatchSummaryAPI>('/api/batches', form, {
     onUploadProgress: (e) => {

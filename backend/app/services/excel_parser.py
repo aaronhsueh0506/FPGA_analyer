@@ -50,7 +50,16 @@ def parse_excel(file_path: Union[str, Path]) -> Tuple[Dict[str, RegisterInfo], L
     ordered_bitfields is a flat list in address/definition order (used as column order).
     """
     wb = openpyxl.load_workbook(file_path, read_only=True, data_only=True)
-    ws = wb.active
+
+    # Search all sheets for one containing an ADDR column header
+    ws = None
+    for ws_candidate in wb.worksheets:
+        peek = list(ws_candidate.iter_rows(values_only=True, max_row=30))
+        if any(row and any(c is not None and str(c).strip().upper() == "ADDR" for c in row) for row in peek):
+            ws = ws_candidate
+            break
+    if ws is None:
+        ws = wb.active  # fallback
 
     rows = list(ws.iter_rows(values_only=True))
     # Find header row (contains "ADDR" anywhere in the row)

@@ -70,7 +70,7 @@ export default function Registers() {
             ref={fileInputRef}
             className="hidden-input"
             type="file"
-            accept=".xlsx"
+            accept=".xlsx,.xls"
             onChange={(e) => handleFiles(e.target.files)}
           />
         </div>

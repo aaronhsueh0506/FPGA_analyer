@@ -18,6 +18,10 @@ interface Props {
 const ROWS_PER_PAGE_OPTIONS = [10, 50, 100, 500]
 
 function extractCaseNumber(testCase: string, prefix: string): string {
+  // Folder-based upload: "name1/xx_reg.dat" → show "name1"
+  const slashIdx = testCase.lastIndexOf('/')
+  if (slashIdx !== -1) return testCase.slice(0, slashIdx)
+  // Regular file: use prefix+number extraction
   if (!prefix) return testCase
   const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\d+)`)
   const m = testCase.match(re)

@@ -2,7 +2,7 @@ import json
 from datetime import datetime
 from pathlib import Path
 
-from fastapi import APIRouter, Depends, Form, HTTPException, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
 
@@ -42,10 +42,21 @@ def list_batches(db: Session = Depends(get_db)):
 
 @router.post("", response_model=BatchOut)
 async def create_batch(
-    register_id: int = Form(...),
-    files: list[UploadFile] = File(...),
+    request: Request,
     db: Session = Depends(get_db),
 ):
+    # Use high limits so 1000+ dat files are accepted
+    form = await request.form(max_fields=200_000, max_files=200_000)
+
+    try:
+        register_id = int(form["register_id"])  # type: ignore[arg-type]
+    except (KeyError, ValueError, TypeError):
+        raise HTTPException(status_code=400, detail="Missing or invalid register_id")
+
+    uploads = [v for k, v in form.multi_items() if k == "files"]
+    if not uploads:
+        raise HTTPException(status_code=400, detail="No .dat files provided")
+
     register = db.get(RegisterDefinitionORM, register_id)
     if register is None:
         raise HTTPException(status_code=404, detail="Register definition not found")
@@ -58,12 +69,13 @@ async def create_batch(
 
     # Read & parse each dat
     dat_inputs: list[tuple[str, dict[str, int]]] = []
-    for upload in files:
-        if not upload.filename:
+    for upload in uploads:
+        fname = getattr(upload, "filename", None) or ""
+        if not fname:
             continue
         content = await upload.read()
-        addr_val = parse_dat_bytes(content, upload.filename)
-        dat_inputs.append((upload.filename, addr_val))
+        addr_val = parse_dat_bytes(content, fname)
+        dat_inputs.append((fname, addr_val))
 
     if not dat_inputs:
         raise HTTPException(status_code=400, detail="No valid .dat files provided")
