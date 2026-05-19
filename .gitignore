@@ -23,3 +23,7 @@ frontend/node_modules/
 
 # Logs
 *.log
+
+# Sample data files (not for version control)
+*.xlsx
+*.dat
