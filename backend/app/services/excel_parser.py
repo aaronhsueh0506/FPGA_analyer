@@ -53,16 +53,19 @@ def parse_excel(file_path: Union[str, Path]) -> Tuple[Dict[str, RegisterInfo], L
     ws = wb.active
 
     rows = list(ws.iter_rows(values_only=True))
-    # Find header row (contains "ADDR" in column A)
+    # Find header row (contains "ADDR" anywhere in the row)
     header_row_idx = None
     for i, row in enumerate(rows):
-        if row[0] is not None and str(row[0]).strip().upper() == "ADDR":
+        if row and any(c is not None and str(c).strip().upper() == "ADDR" for c in row):
             header_row_idx = i
             break
 
     if header_row_idx is None:
-        # Fallback: assume row index 6 (7th row)
-        header_row_idx = 6
+        # Fallback: assume row index 6 (7th row), capped to available rows
+        header_row_idx = min(6, len(rows) - 1)
+
+    if header_row_idx < 0 or header_row_idx >= len(rows):
+        raise ValueError(f"Cannot find header row with ADDR column (sheet has {len(rows)} rows)")
 
     col_names = [str(c).strip().upper() if c is not None else "" for c in rows[header_row_idx]]
 
