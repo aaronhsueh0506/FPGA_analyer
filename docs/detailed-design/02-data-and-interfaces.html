@@ -1,0 +1,481 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FPGA Register Analyzer — 資料模型與元件介面</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #1f2937;
+    --text-secondary: #4b5563;
+    --accent: #1f3a8a;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --code-bg: #f9fafb;
+    --table-header: #f3f4f6;
+    --table-row-alt: #fafafa;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  body {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+  header.doc-header {
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 16px;
+    margin-bottom: 32px;
+  }
+  header.doc-header h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    color: var(--text);
+  }
+  header.doc-header .meta {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  h2 {
+    font-size: 22px;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--accent);
+  }
+  h3 {
+    font-size: 17px;
+    margin-top: 28px;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+  h4 {
+    font-size: 15px;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+  p { margin: 12px 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid var(--border-strong);
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--table-header);
+    font-weight: 600;
+  }
+  tr:nth-child(even) td { background: var(--table-row-alt); }
+  code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", "Monaco", "Consolas", monospace;
+    font-size: 13px;
+    color: #be185d;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+    font-family: "SF Mono", "Monaco", "Consolas", monospace;
+  }
+  pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--text);
+  }
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 16px 0;
+    padding: 8px 16px;
+    background: var(--code-bg);
+    color: var(--text-secondary);
+  }
+  .toc {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 24px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; }
+  .toc a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .toc a:hover { text-decoration: underline; }
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    font-family: "SF Mono", "Monaco", "Consolas", monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  footer {
+    margin-top: 64px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-align: center;
+  }
+  pre.mermaid {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    text-align: center;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  .nav-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    margin: 24px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .nav-bar a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .nav-bar a:hover { text-decoration: underline; }
+  .nav-bar .disabled { color: var(--text-secondary); cursor: default; opacity: 0.5; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
+</script>
+</head>
+<body>
+
+<header class="doc-header">
+  <h1>FPGA Register Analyzer — 系統詳細設計</h1>
+  <div class="meta">版本：v0.4.0　|　第 2 份：資料模型與元件介面　|　<a href="index.html">← 回索引</a></div>
+</header>
+
+<nav class="nav-bar">
+  <a href="01-overview-and-components.html">← 上一份：概述與元件</a>
+  <a href="index.html">索引</a>
+  <a href="03-dynamics.html">下一份：動態行為 →</a>
+</nav>
+
+<h2 id="sec-3">3. 資料模型詳述</h2>
+
+<h3>3.1 前端 TypeScript 型別</h3>
+<p>從 <code>frontend/src/mock/data.ts</code> 與相關 hook：</p>
+
+<pre><code>// 一個 bit field 的定義（從 Excel 解析來）
+export interface BitFieldDef {
+  name: string             // 例如 "SPE_CORE_MODE"
+  width: number            // bit 寬度，1 ~ 32
+  registerName: string     // 所屬 register 名稱
+  registerAddr: string     // hex address，4 字元，例如 "0010"
+}
+
+// 一個 Register 定義的 metadata
+export interface RegisterDefinition {
+  id: number
+  name: string
+  originalFilename: string
+  registerCount: number
+  bitfieldCount: number
+  uploadedAt: string       // ISO format
+}
+
+// 一個 batch 的摘要
+export interface BatchSummary {
+  id: number
+  name: string             // 自動命名 YYYYMMDD_HHmmss
+  registerName: string
+  datCount: number
+  warningCount: number
+  analyzedAt: string
+}
+
+// batch 詳細資料（含實際結果矩陣）
+export interface BatchDetail {
+  summary: BatchSummary
+  bitFields: BitFieldDef[]                              // 75 個
+  rows: Array&lt;{
+    testCase: string                                    // 檔名，如 "speg1.dat"
+    values: number[]                                    // 對應 bitFields 順序，已解析的數值
+  }&gt;
+  warnings: string[]
+}
+
+// bit field 類型
+export type BitFieldType = 'mode' | 'magnitude' | 'others'
+
+// localStorage 中存的 type 對照表
+export type TypeMap = Record&lt;string /* bf.name */, BitFieldType&gt;</code></pre>
+
+<h3>3.2 後端 Pydantic / SQLAlchemy 模型（規劃）</h3>
+
+<pre><code># Pydantic：API 入出參數 schema
+class RegisterDefinitionOut(BaseModel):
+    id: int
+    name: str
+    original_filename: str
+    register_count: int
+    bitfield_count: int
+    uploaded_at: datetime
+
+class BatchOut(BaseModel):
+    id: int
+    name: str
+    register_name: str
+    dat_count: int
+    warning_count: int
+    analyzed_at: datetime
+
+class BatchDetailOut(BaseModel):
+    summary: BatchOut
+    bit_fields: List[BitFieldDef]
+    rows: List[BatchRow]                  # testCase + values
+    warnings: List[str]
+
+# SQLAlchemy ORM
+class RegisterDefinitionORM(Base):
+    __tablename__ = "register_definitions"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(Text, nullable=False)
+    original_filename = Column(Text)
+    file_path = Column(Text, nullable=False)
+    register_count = Column(Integer)
+    bitfield_count = Column(Integer)
+    uploaded_at = Column(DateTime, default=datetime.utcnow)
+    batches = relationship("BatchORM", back_populates="register")
+
+class BatchORM(Base):
+    __tablename__ = "batches"
+    id = Column(Integer, primary_key=True, autoincrement=True)
+    name = Column(Text)
+    register_definition_id = Column(Integer, ForeignKey("register_definitions.id"), nullable=False)
+    dat_count = Column(Integer)
+    warning_count = Column(Integer, default=0)
+    result_csv_path = Column(Text)
+    result_xlsx_path = Column(Text)
+    analyzed_at = Column(DateTime, default=datetime.utcnow)
+    register = relationship("RegisterDefinitionORM", back_populates="batches")</code></pre>
+
+<h3>3.3 SQLite Schema（含索引）</h3>
+
+<pre><code>CREATE TABLE register_definitions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT NOT NULL,
+    original_filename TEXT,
+    file_path TEXT NOT NULL,
+    register_count INTEGER,
+    bitfield_count INTEGER,
+    uploaded_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE batches (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    name TEXT,
+    register_definition_id INTEGER NOT NULL,
+    dat_count INTEGER,
+    warning_count INTEGER DEFAULT 0,
+    result_csv_path TEXT,
+    result_xlsx_path TEXT,
+    analyzed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (register_definition_id) REFERENCES register_definitions(id) ON DELETE RESTRICT
+);
+
+-- 索引（加速歷史查詢）
+CREATE INDEX idx_batches_analyzed_at ON batches(analyzed_at DESC);
+CREATE INDEX idx_batches_register_id ON batches(register_definition_id);</code></pre>
+
+<p>外鍵 <code>ON DELETE RESTRICT</code>：當 batch 還參考某個 register 時，禁止刪除該 register。</p>
+
+<h2 id="sec-4">4. 元件介面 (Interfaces)</h2>
+
+<h3>4.1 前端關鍵元件 Props</h3>
+
+<h4><code>ResultsTable.tsx</code></h4>
+
+<pre><code>interface Props {
+  rows: Array&lt;{ testCase: string; values: number[] }&gt;
+  bitFields: BitFieldDef[]
+  visibleIndices: number[]              // 父元件給的「可見欄」index 陣列
+  format: 'hex' | 'dec'
+  setFormat: (f: 'hex' | 'dec') =&gt; void
+  prefix: string                        // 從檔名萃取編號用
+  setPrefix: (p: string) =&gt; void
+  onOpenColumnSelector: () =&gt; void      // 開欄位設定 modal
+}</code></pre>
+
+<p>內部 state：<code>rowsPerPage</code>（10/50/100/500，預設 100）、<code>page</code>、<code>gotoInput</code></p>
+
+<h4><code>DualRegisterChart.tsx</code></h4>
+
+<pre><code>interface Props {
+  rows: Array&lt;{ testCase: string; values: number[] }&gt;
+  bitFields: BitFieldDef[]
+  caseRange: { from: number; to: number }
+}</code></pre>
+
+<p>內部 state：<code>xIdx</code>、<code>yIdx</code>、<code>view: 'heatmap' | 'scatter'</code></p>
+
+<h4><code>StatsPanel.tsx</code></h4>
+
+<pre><code>interface Props {
+  rows: Array&lt;{ testCase: string; values: number[] }&gt;
+  bitFields: BitFieldDef[]
+  types: TypeMap                       // 來自 useBitFieldTypes
+  caseRange: { from: number; to: number }
+}</code></pre>
+
+<h4><code>OverallPanel.tsx</code></h4>
+
+<pre><code>interface Props {
+  summary: BatchSummary
+  rows: Array&lt;{ testCase: string; values: number[] }&gt;
+  bitFields: BitFieldDef[]
+  types: TypeMap
+  caseRange: { from: number; to: number }
+}</code></pre>
+
+<h4><code>BitFieldTypeModal.tsx</code></h4>
+
+<pre><code>interface Props {
+  open: boolean
+  onClose: () =&gt; void
+  bitFields: BitFieldDef[]
+  types: TypeMap
+  onApply: (next: TypeMap) =&gt; void
+  onReset: () =&gt; void
+}</code></pre>
+
+<h4><code>useBitFieldTypes(registerId, bitFields)</code> Hook 回傳值</h4>
+
+<pre><code>{
+  types: TypeMap
+  update(name: string, type: BitFieldType): void
+  bulkSet(map: TypeMap): void
+  reset(): void
+  isMode(name: string): boolean
+  modeFieldNames(): string[]
+}</code></pre>
+
+<h3>4.2 後端 REST API Contract（規劃中）</h3>
+
+<h4>POST <code>/api/registers</code></h4>
+
+<p><strong>Request</strong>：<code>multipart/form-data</code></p>
+<ul>
+  <li><code>file</code>: <code>.xlsx</code> 檔案</li>
+</ul>
+
+<p><strong>Response 200</strong>：</p>
+<pre><code>{
+  "id": 1,
+  "name": "SPE Registers (v1)",
+  "original_filename": "spe_registers_sample.xlsx",
+  "register_count": 47,
+  "bitfield_count": 75,
+  "uploaded_at": "2026-05-14T10:12:00Z"
+}</code></pre>
+
+<p><strong>Response 400</strong>（Excel 格式錯誤）：</p>
+<pre><code>{ "detail": "Sheet 'Registers' not found in workbook" }</code></pre>
+
+<h4>GET <code>/api/registers</code></h4>
+
+<p><strong>Response 200</strong>：<code>Array&lt;RegisterDefinitionOut&gt;</code></p>
+
+<h4>DELETE <code>/api/registers/{id}</code></h4>
+
+<p><strong>Response 204</strong>：成功<br>
+<strong>Response 409</strong>（仍有 batch 參考）：<code>{ "detail": "Register is referenced by 3 batches; delete those first." }</code></p>
+
+<h4>POST <code>/api/batches</code></h4>
+
+<p><strong>Request</strong>：<code>multipart/form-data</code></p>
+<ul>
+  <li><code>register_id</code> (form field)</li>
+  <li><code>files</code> (重複多次，N 個 <code>.dat</code>)</li>
+</ul>
+
+<p><strong>Response 200</strong>：</p>
+<pre><code>{
+  "batch_id": 101,
+  "status": "completed",
+  "dat_count": 2000,
+  "warning_count": 3,
+  "analyzed_at": "2026-05-14T10:12:00Z"
+}</code></pre>
+
+<p><strong>Response 400</strong>：</p>
+<pre><code>{ "detail": "register_id required" }</code></pre>
+
+<h4>GET <code>/api/batches</code></h4>
+
+<p><strong>Response 200</strong>：<code>Array&lt;BatchOut&gt;</code> 依 <code>analyzed_at</code> 由新到舊。</p>
+
+<h4>GET <code>/api/batches/{id}</code></h4>
+
+<p><strong>Response 200</strong>：完整 <code>BatchDetailOut</code>（含 rows）。</p>
+<ul>
+  <li>注意：100 筆 dat × 75 bit field = 7500 數字，JSON 約 100KB；2000 筆約 2MB，需考慮 gzip。</li>
+</ul>
+
+<p><strong>Response 404</strong>：<code>{ "detail": "Batch not found" }</code></p>
+
+<h4>GET <code>/api/batches/{id}/download.csv</code></h4>
+
+<p><strong>Response 200</strong>：<code>text/csv</code> 串流，<code>Content-Disposition: attachment; filename="batch_{id}.csv"</code></p>
+
+<h4>GET <code>/api/batches/{id}/download.xlsx</code></h4>
+
+<p><strong>Response 200</strong>：<code>application/vnd.openxmlformats-officedocument.spreadsheetml.sheet</code> 串流</p>
+
+<nav class="nav-bar">
+  <a href="01-overview-and-components.html">← 上一份：概述與元件</a>
+  <a href="index.html">索引</a>
+  <a href="03-dynamics.html">下一份：動態行為 →</a>
+</nav>
+
+<footer>
+  FPGA Register Analyzer Detailed Design — Part 2　|　v0.4.0　|　Aaron Hsueh
+</footer>
+
+</body>
+</html>

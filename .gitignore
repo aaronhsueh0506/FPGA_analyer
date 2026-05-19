@@ -1,0 +1,25 @@
+# Python
+backend/venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Runtime data (SQLite DB + uploaded files)
+data/
+
+# macOS
+.DS_Store
+.AppleDouble
+
+# Editor
+.vscode/
+.idea/
+*.swp
+
+# Frontend build dependencies (not the build output)
+frontend/node_modules/
+
+# Logs
+*.log

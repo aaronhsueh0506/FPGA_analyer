@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FPGA Register Analyzer — 品質屬性</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #1f2937;
+    --text-secondary: #4b5563;
+    --accent: #1f3a8a;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --code-bg: #f9fafb;
+    --table-header: #f3f4f6;
+    --table-row-alt: #fafafa;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  body {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+  header.doc-header {
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 16px;
+    margin-bottom: 32px;
+  }
+  header.doc-header h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    color: var(--text);
+  }
+  header.doc-header .meta {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  h2 {
+    font-size: 22px;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--accent);
+  }
+  h3 {
+    font-size: 17px;
+    margin-top: 28px;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+  h4 {
+    font-size: 15px;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+  p { margin: 12px 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid var(--border-strong);
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--table-header);
+    font-weight: 600;
+  }
+  tr:nth-child(even) td { background: var(--table-row-alt); }
+  code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", "Monaco", "Consolas", monospace;
+    font-size: 13px;
+    color: #be185d;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+    font-family: "SF Mono", "Monaco", "Consolas", monospace;
+  }
+  pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--text);
+  }
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 16px 0;
+    padding: 8px 16px;
+    background: var(--code-bg);
+    color: var(--text-secondary);
+  }
+  .toc {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 24px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; }
+  .toc a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .toc a:hover { text-decoration: underline; }
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    font-family: "SF Mono", "Monaco", "Consolas", monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  footer {
+    margin-top: 64px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-align: center;
+  }
+  pre.mermaid {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    text-align: center;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  .nav-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    margin: 24px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .nav-bar a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .nav-bar a:hover { text-decoration: underline; }
+  .nav-bar .disabled { color: var(--text-secondary); cursor: default; opacity: 0.5; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
+</script>
+</head>
+<body>
+
+<header class="doc-header">
+  <h1>FPGA Register Analyzer — 系統詳細設計</h1>
+  <div class="meta">版本：v0.4.0　|　第 5 份：品質屬性　|　<a href="index.html">← 回索引</a></div>
+</header>
+
+<nav class="nav-bar">
+  <a href="04-algorithms.html">← 上一份：演算法</a>
+  <a href="index.html">索引</a>
+  <span class="disabled">（末份）</span>
+</nav>
+
+<h2 id="sec-9">9. 錯誤處理與例外流程</h2>
+
+<h3>9.1 Excel 格式錯誤</h3>
+
+<table>
+  <thead><tr><th>情境</th><th>偵測點</th><th>處理</th></tr></thead>
+  <tbody>
+    <tr><td>不是 .xlsx</td><td>前端副檔名檢查 + 後端 magic bytes</td><td>前端：拒絕上傳，提示「請選 .xlsx」</td></tr>
+    <tr><td>缺 sheet "Registers"</td><td>ExcelParser openpyxl</td><td>400 <code>{"detail": "Sheet 'Registers' not found"}</code></td></tr>
+    <tr><td>表頭不在第 7 列</td><td>ExcelParser 檢查欄位名稱</td><td>400 <code>{"detail": "Expected headers ADDR/Register/INI/Bits/Member at row 7"}</code></td></tr>
+    <tr><td>ADDR 不是 4-char hex</td><td>ExcelParser 逐列驗證</td><td>在 warnings 中標示該列，繼續</td></tr>
+    <tr><td>Bits 格式錯（不是數字或 X_Y）</td><td>parseRange</td><td>該 bit field 跳過 + warning</td></tr>
+  </tbody>
+</table>
+
+<h3>9.2 dat 格式錯誤</h3>
+
+<table>
+  <thead><tr><th>情境</th><th>處理</th></tr></thead>
+  <tbody>
+    <tr><td>行長度不是 12</td><td>該行跳過 + warning「Line {n} bad length」</td></tr>
+    <tr><td>非 hex 字元</td><td>該行跳過 + warning</td></tr>
+    <tr><td>Address 在 dat 但不在 Excel</td><td>加入 warnings list；繼續分析其他</td></tr>
+    <tr><td>Address 在 Excel 但不在 dat</td><td>bit field 的值為 NULL；前端顯示 "—"</td></tr>
+  </tbody>
+</table>
+
+<h3>9.3 後端 API HTTP 狀態</h3>
+
+<pre class="mermaid">
+graph TD
+    REQ[請求進入] --> V{schema 驗證}
+    V -->|失敗| E422[422 Unprocessable<br/>(Pydantic)]
+    V -->|成功| L{業務邏輯}
+    L -->|資源不存在| E404[404 Not Found]
+    L -->|格式錯| E400[400 Bad Request]
+    L -->|衝突<br/>有 batch 用該 register| E409[409 Conflict]
+    L -->|未預期錯誤| E500[500 Internal]
+    L -->|成功| OK[200/201/204]
+</pre>
+
+<h3>9.4 前端錯誤處理</h3>
+
+<ul>
+  <li>網路失敗：toast 顯示「連線失敗，請稍後重試」+ retry 按鈕</li>
+  <li>大檔上傳逾時：顯示「處理中」spinner，超過 60s 提示可能仍在後端處理</li>
+  <li>JSON 解析失敗：fallback 顯示原始錯誤碼</li>
+</ul>
+
+<h2 id="sec-10">10. 效能考量</h2>
+
+<h3>10.1 大量 dat (2000+) 客戶端處理</h3>
+
+<ul>
+  <li>在 Analyze 頁，已選檔案列表<strong>只渲染前 50 筆 + 「+N more」</strong>，避免 React reconciler 處理 2000 個 row。</li>
+  <li>上傳前<strong>不在前端解析 dat 內容</strong>，僅檢查副檔名與計數，交給後端解析。</li>
+</ul>
+
+<h3>10.2 表格 Pagination</h3>
+
+<table>
+  <thead><tr><th>維度</th><th>限制</th></tr></thead>
+  <tbody>
+    <tr><td>75 bit fields × 2000 testCase = 150,000 cells</td><td>一次性渲染會卡</td></tr>
+    <tr><td>每頁 100（預設） / 最大 500</td><td>一次最多渲染 75 × 500 = 37,500 cells</td></tr>
+    <tr><td>配合 column selector</td><td>使用者可進一步壓低欄數</td></tr>
+  </tbody>
+</table>
+
+<h3>10.3 Heatmap 渲染</h3>
+
+<ul>
+  <li>採用 <strong>canvas renderer</strong> 而非 SVG（ECharts <code>renderer: 'canvas'</code>），大資料量更穩</li>
+  <li>DualRegisterChart 已限制：unique value &gt; 50 時自動分 20 bins（Heatmap2D 內部）</li>
+  <li>Scatter 大量點時 opacity 0.55 讓重疊區自然加深</li>
+</ul>
+
+<h3>10.4 Seeded Random Mock</h3>
+
+<ul>
+  <li><code>generateMockBatchDetail(batchId)</code> 用 <code>batchId * 9301 + 49297</code> 作 seed</li>
+  <li>同 batchId 多次呼叫得到相同 rows（Tab 切換不會重新洗牌）</li>
+  <li>不同 batchId 給不同分布</li>
+</ul>
+
+<h2 id="sec-11">11. 安全考量</h2>
+
+<h3>11.1 檔案上傳</h3>
+
+<ul>
+  <li>副檔名白名單：<code>.xlsx</code>（registers）/ <code>.dat</code>（batches）</li>
+  <li>檔案大小上限：建議 <code>xlsx</code> ≤ 10MB、<code>dat</code> ≤ 100KB / 檔，總 batch ≤ 500MB</li>
+  <li>openpyxl 預設<strong>不執行 macro</strong>，VBA 程式碼被忽略</li>
+  <li>儲存路徑使用 <code>id</code> 作目錄名（非使用者上傳檔名），避免 path traversal</li>
+</ul>
+
+<h3>11.2 SQL Injection</h3>
+
+<ul>
+  <li>使用 <strong>SQLAlchemy ORM</strong>，所有查詢透過 parameterized statements</li>
+  <li>不直接拼接 SQL 字串</li>
+</ul>
+
+<h3>11.3 XSS</h3>
+
+<ul>
+  <li>React 預設<strong>自動 escape</strong> dangerouslySetInnerHTML 才會繞過</li>
+  <li>ECharts tooltip formatter 回傳 HTML 字串時，內容皆由內部資料組成（檔名、bit field 名稱），不接受 user-supplied raw HTML</li>
+  <li>檔名顯示前用 <code>String()</code> 包裝</li>
+</ul>
+
+<h3>11.4 webkitdirectory</h3>
+
+<ul>
+  <li>瀏覽器 API，無法讀取絕對路徑（只給檔案內容 + relative path）</li>
+  <li>不會洩露使用者磁碟結構</li>
+</ul>
+
+<h2 id="sec-12">12. 文件變更歷程</h2>
+
+<table>
+  <thead><tr><th>版本</th><th>日期</th><th>變更</th></tr></thead>
+  <tbody>
+    <tr><td>v0.4.0</td><td>2026-05-14</td><td>首版 — 對應 architecture v0.3.0；含序列圖、資料流圖、狀態圖、API contract、演算法</td></tr>
+  </tbody>
+</table>
+
+<blockquote>對應的「系統架構」（簡略版）：<a href="../architecture.md">architecture.md</a></blockquote>
+
+<nav class="nav-bar">
+  <a href="04-algorithms.html">← 上一份：演算法</a>
+  <a href="index.html">索引</a>
+  <span class="disabled">（末份）</span>
+</nav>
+
+<footer>
+  FPGA Register Analyzer Detailed Design — Part 5　|　v0.4.0　|　Aaron Hsueh
+</footer>
+
+</body>
+</html>

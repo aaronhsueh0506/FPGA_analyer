@@ -1,0 +1,182 @@
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { BitFieldDef } from '../../mock/data'
+
+type Format = 'hex' | 'dec'
+
+interface Props {
+  rows: Array<{ testCase: string; values: number[] }>
+  bitFields: BitFieldDef[]
+  visibleIndices: number[]
+  format: Format
+  setFormat: (f: Format) => void
+  prefix: string
+  setPrefix: (p: string) => void
+  onOpenColumnSelector: () => void
+}
+
+const ROWS_PER_PAGE_OPTIONS = [10, 50, 100, 500]
+
+function extractCaseNumber(testCase: string, prefix: string): string {
+  if (!prefix) return testCase
+  const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\d+)`)
+  const m = testCase.match(re)
+  return m ? `#${m[1]}` : testCase
+}
+
+export default function ResultsTable({
+  rows, bitFields, visibleIndices, format, setFormat,
+  prefix, setPrefix, onOpenColumnSelector
+}: Props) {
+  const { t } = useTranslation()
+  const [rowsPerPage, setRowsPerPage] = useState(100)
+  const [page, setPage] = useState(1)
+  const [gotoInput, setGotoInput] = useState('')
+
+  const totalPages = Math.max(1, Math.ceil(rows.length / rowsPerPage))
+  const currentPage = Math.min(page, totalPages)
+  const startIdx = (currentPage - 1) * rowsPerPage
+  const visibleRows = useMemo(
+    () => rows.slice(startIdx, startIdx + rowsPerPage),
+    [rows, startIdx, rowsPerPage]
+  )
+
+  const formatValue = (v: number) =>
+    format === 'hex' ? `0x${v.toString(16).toUpperCase()}` : String(v)
+
+  const onChangeRowsPerPage = (n: number) => {
+    setRowsPerPage(n)
+    setPage(1)
+  }
+
+  const goto = () => {
+    const n = Number(gotoInput)
+    if (!Number.isFinite(n)) return
+    setPage(Math.min(totalPages, Math.max(1, Math.floor(n))))
+    setGotoInput('')
+  }
+
+  return (
+    <div>
+      <div className="toolbar">
+        <div className="group">
+          <label>{t('results.prefix')}</label>
+          <input
+            type="text"
+            className="prefix-input"
+            placeholder={t('results.prefixPlaceholder')}
+            value={prefix}
+            onChange={(e) => setPrefix(e.target.value)}
+          />
+        </div>
+        <div className="divider" />
+        <div className="group">
+          <button className="btn btn-sm" onClick={onOpenColumnSelector}>
+            {t('results.columnSelector')} ({visibleIndices.length}/{bitFields.length})
+          </button>
+        </div>
+        <div className="divider" />
+        <div className="group">
+          <label>{t('results.rowsPerPage')}</label>
+          <select
+            value={rowsPerPage}
+            onChange={(e) => onChangeRowsPerPage(Number(e.target.value))}
+          >
+            {ROWS_PER_PAGE_OPTIONS.map((n) => (
+              <option key={n} value={n}>{n}</option>
+            ))}
+          </select>
+        </div>
+        <div className="divider" />
+        <div className="group">
+          <label>{t('results.displayFormat')}</label>
+          <div className="toggle-group">
+            <button className={format === 'dec' ? 'active' : ''} onClick={() => setFormat('dec')}>
+              {t('results.formatDecimal')}
+            </button>
+            <button className={format === 'hex' ? 'active' : ''} onClick={() => setFormat('hex')}>
+              {t('results.formatHex')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <div className="table-scroll">
+        {visibleIndices.length === 0 ? (
+          <div className="empty-state">{t('results.noVisibleColumns')}</div>
+        ) : visibleRows.length === 0 ? (
+          <div className="empty-state">{t('results.noDataInRange')}</div>
+        ) : (
+          <table className="data-table">
+            <thead>
+              <tr>
+                <th style={{ position: 'sticky', left: 0, background: 'var(--table-header)', zIndex: 2 }}>
+                  {t('results.testCase')}
+                </th>
+                {visibleIndices.map((idx) => (
+                  <th key={idx} className="mono" style={{ whiteSpace: 'nowrap' }}>
+                    {bitFields[idx].name}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {visibleRows.map((row, ri) => (
+                <tr key={startIdx + ri}>
+                  <td
+                    className="mono text-left"
+                    style={{ position: 'sticky', left: 0, background: 'var(--bg)', fontWeight: 600 }}
+                  >
+                    {extractCaseNumber(row.testCase, prefix)}
+                  </td>
+                  {visibleIndices.map((idx) => (
+                    <td key={idx} className="mono">{formatValue(row.values[idx])}</td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+
+      <div className="pagination">
+        <button
+          className="btn btn-sm"
+          onClick={() => setPage((p) => Math.max(1, p - 1))}
+          disabled={currentPage <= 1}
+        >
+          {t('results.prev')}
+        </button>
+        <span className="info">{t('results.page', { current: currentPage, total: totalPages })}</span>
+        <button
+          className="btn btn-sm"
+          onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+          disabled={currentPage >= totalPages}
+        >
+          {t('results.next')}
+        </button>
+        <input
+          type="range"
+          min={1}
+          max={totalPages}
+          value={currentPage}
+          onChange={(e) => setPage(Number(e.target.value))}
+        />
+        <span className="info">{t('results.gotoPage')}</span>
+        <input
+          type="number"
+          min={1}
+          max={totalPages}
+          value={gotoInput}
+          onChange={(e) => setGotoInput(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') goto()
+          }}
+        />
+        <button className="btn btn-sm" onClick={goto} disabled={!gotoInput}>
+          {t('results.apply')}
+        </button>
+      </div>
+    </div>
+  )
+}

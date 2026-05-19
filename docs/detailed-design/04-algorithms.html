@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FPGA Register Analyzer — 演算法詳述</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #1f2937;
+    --text-secondary: #4b5563;
+    --accent: #1f3a8a;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --code-bg: #f9fafb;
+    --table-header: #f3f4f6;
+    --table-row-alt: #fafafa;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  body {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+  header.doc-header {
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 16px;
+    margin-bottom: 32px;
+  }
+  header.doc-header h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    color: var(--text);
+  }
+  header.doc-header .meta {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  h2 {
+    font-size: 22px;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--accent);
+  }
+  h3 {
+    font-size: 17px;
+    margin-top: 28px;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+  h4 {
+    font-size: 15px;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+  p { margin: 12px 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid var(--border-strong);
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--table-header);
+    font-weight: 600;
+  }
+  tr:nth-child(even) td { background: var(--table-row-alt); }
+  code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", "Monaco", "Consolas", monospace;
+    font-size: 13px;
+    color: #be185d;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+    font-family: "SF Mono", "Monaco", "Consolas", monospace;
+  }
+  pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--text);
+  }
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 16px 0;
+    padding: 8px 16px;
+    background: var(--code-bg);
+    color: var(--text-secondary);
+  }
+  .toc {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px 24px;
+    margin: 24px 0 40px;
+  }
+  .toc h3 { margin-top: 0; }
+  .toc ol { margin: 0; }
+  .toc a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .toc a:hover { text-decoration: underline; }
+  .diagram {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    font-family: "SF Mono", "Monaco", "Consolas", monospace;
+    font-size: 12px;
+    line-height: 1.4;
+    overflow-x: auto;
+    white-space: pre;
+  }
+  footer {
+    margin-top: 64px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-align: center;
+  }
+  pre.mermaid {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    text-align: center;
+    overflow-x: auto;
+    margin: 16px 0;
+    font-family: inherit;
+    font-size: 14px;
+  }
+  .nav-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 0;
+    margin: 24px 0;
+    border-top: 1px solid var(--border);
+    border-bottom: 1px solid var(--border);
+    font-size: 14px;
+  }
+  .nav-bar a {
+    color: var(--accent);
+    text-decoration: none;
+  }
+  .nav-bar a:hover { text-decoration: underline; }
+  .nav-bar .disabled { color: var(--text-secondary); cursor: default; opacity: 0.5; }
+</style>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@10/dist/mermaid.min.js"></script>
+<script>
+  mermaid.initialize({ startOnLoad: true, theme: 'neutral', securityLevel: 'loose' });
+</script>
+</head>
+<body>
+
+<header class="doc-header">
+  <h1>FPGA Register Analyzer — 系統詳細設計</h1>
+  <div class="meta">版本：v0.4.0　|　第 4 份：演算法詳述　|　<a href="index.html">← 回索引</a></div>
+</header>
+
+<nav class="nav-bar">
+  <a href="03-dynamics.html">← 上一份：動態行為</a>
+  <a href="index.html">索引</a>
+  <a href="05-quality.html">下一份：品質屬性 →</a>
+</nav>
+
+<h2 id="sec-8">8. 演算法詳述 (Algorithms)</h2>
+
+<h3>8.1 Bit Field 解析</h3>
+
+<pre><code>INPUT:
+  excel_rows : List[Row]
+  dat_lines  : List[str]
+OUTPUT:
+  result : List[{ testCase, values[] }]
+  warnings : List[str]
+
+# Step A: 建立 Registers Dictionary
+registers := {}
+current_addr := None
+FOR each row in excel_rows:
+  IF row.ADDR ≠ NULL AND row.Register ≠ NULL:
+    current_addr := row.ADDR.upper()
+    registers[current_addr] := { name: row.Register, bitfields: [] }
+  IF row.Member ≠ NULL:
+    IF "_" in row.Bits:
+      hi, lo := parseRange(row.Bits)        # "5_4" → 5, 4
+      width  := hi - lo + 1
+      low_bit := lo
+    ELSE:
+      low_bit := int(row.Bits)
+      width  := 1
+    registers[current_addr].bitfields.append({
+      name: row.Member,
+      low_bit: low_bit,
+      width: width,
+      ini: row.INI
+    })
+
+# Step B: 解析 dat
+addr_value_map := {}
+FOR each line in dat_lines:
+  IF len(line.trim()) ≠ 12: continue
+  addr  := line[0:4].upper()
+  value := parseInt(line[4:12], 16)
+  addr_value_map[addr] := value
+
+# Step C: 對應 + 提取
+output_row := { testCase: dat_filename, values: [] }
+FOR each bf in flatten(registers.bitfields):  # 依固定順序，例如依 Excel 出現順序
+  addr := bf.registerAddr
+  IF addr not in addr_value_map:
+    output_row.values.append(NULL)
+    warnings.append("Missing address {addr} in dat")
+    continue
+  value := addr_value_map[addr]
+  mask  := (1 &lt;&lt; bf.width) - 1
+  extracted := (value &gt;&gt; bf.low_bit) &amp; mask
+  output_row.values.append(extracted)
+
+# Step D: 未知 address
+FOR addr in addr_value_map:
+  IF addr not in registers:
+    warnings.append("Unknown address: {addr}")</code></pre>
+
+<h3>8.2 組合分析 Top-N</h3>
+
+<pre><code>INPUT:
+  rows : List[{ testCase, values[] }]
+  pickedFields : List[int]        # bit field index 清單
+  N : int                          # 例如 10
+OUTPUT:
+  top : List[{ key, count, percent }]
+
+counts := Map&lt;string, int&gt;{}
+FOR each row in rows:
+  key := pickedFields.map(i =&gt; row.values[i]).join('|')
+  counts[key] := (counts[key] OR 0) + 1
+
+arr := counts.entries().sortDesc(by: count).take(N)
+total := rows.length
+return arr.map(entry =&gt; {
+  key:     entry.key,
+  count:   entry.count,
+  percent: entry.count / total * 100
+})</code></pre>
+
+<h3>8.3 Range 涵蓋率計算（Overall Tab）</h3>
+
+<pre><code>INPUT:
+  bitFields : List[BitFieldDef]
+  types     : TypeMap                # 標 'magnitude' 的才算
+  rows      : List[Row]
+OUTPUT:
+  coverage : List[{ name, width, theoMax, actMin, actMax, unique, pct }]
+
+result := []
+FOR each bf in bitFields:
+  IF types[bf.name] ≠ 'magnitude': continue
+
+  vals := rows.map(r =&gt; r.values[indexOf bf])
+  theoMax := IF bf.width == 32 THEN 0xFFFFFFFF ELSE (1 &lt;&lt; bf.width) - 1
+  actMin := min(vals)
+  actMax := max(vals)
+  unique := new Set(vals).size
+  pct := IF theoMax &gt; 0 THEN (actMax - actMin) / theoMax * 100 ELSE 0
+
+  result.append({ name: bf.name, width: bf.width,
+                  theoMax, actMin, actMax, unique, pct })
+
+return result</code></pre>
+
+<h3>8.4 Histogram 自動分箱</h3>
+
+<pre><code>INPUT:
+  values : number[]
+  maxValue : number
+OUTPUT:
+  bins : List[{ label, count }]
+
+IF maxValue ≤ 20:
+  # 離散：每個整數一個 bin
+  bins := for v from 0 to maxValue:
+            { label: v, count: count of v in values }
+ELSE:
+  # 連續：分 20 bins
+  binSize := ceil((maxValue + 1) / 20)
+  bins := for i from 0 to 19:
+            lo := i * binSize
+            hi := min((i+1) * binSize - 1, maxValue)
+            { label: "{lo}-{hi}",
+              count: count(v in values where lo ≤ v ≤ hi) }
+
+return bins</code></pre>
+
+<nav class="nav-bar">
+  <a href="03-dynamics.html">← 上一份：動態行為</a>
+  <a href="index.html">索引</a>
+  <a href="05-quality.html">下一份：品質屬性 →</a>
+</nav>
+
+<footer>
+  FPGA Register Analyzer Detailed Design — Part 4　|　v0.4.0　|　Aaron Hsueh
+</footer>
+
+</body>
+</html>

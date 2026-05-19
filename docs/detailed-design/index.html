@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>FPGA Register Analyzer — 系統詳細設計索引</title>
+<style>
+  :root {
+    --bg: #ffffff;
+    --text: #1f2937;
+    --text-secondary: #4b5563;
+    --accent: #1f3a8a;
+    --border: #e5e7eb;
+    --border-strong: #d1d5db;
+    --code-bg: #f9fafb;
+    --table-header: #f3f4f6;
+    --table-row-alt: #fafafa;
+  }
+  * { box-sizing: border-box; }
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang TC", "Microsoft JhengHei", sans-serif;
+    font-size: 15px;
+    line-height: 1.7;
+  }
+  body {
+    max-width: 1080px;
+    margin: 0 auto;
+    padding: 48px 32px 96px;
+  }
+  header.doc-header {
+    border-bottom: 2px solid var(--accent);
+    padding-bottom: 16px;
+    margin-bottom: 32px;
+  }
+  header.doc-header h1 {
+    margin: 0 0 8px;
+    font-size: 28px;
+    color: var(--text);
+  }
+  header.doc-header .meta {
+    color: var(--text-secondary);
+    font-size: 14px;
+  }
+  h2 {
+    font-size: 22px;
+    margin-top: 48px;
+    margin-bottom: 16px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    color: var(--accent);
+  }
+  h3 {
+    font-size: 17px;
+    margin-top: 28px;
+    margin-bottom: 12px;
+    color: var(--text);
+  }
+  h4 {
+    font-size: 15px;
+    margin-top: 20px;
+    margin-bottom: 10px;
+    color: var(--text);
+  }
+  p { margin: 12px 0; }
+  ul, ol { padding-left: 24px; }
+  li { margin: 4px 0; }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 16px 0;
+    font-size: 14px;
+  }
+  th, td {
+    border: 1px solid var(--border-strong);
+    padding: 8px 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  th {
+    background: var(--table-header);
+    font-weight: 600;
+  }
+  tr:nth-child(even) td { background: var(--table-row-alt); }
+  code {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    padding: 1px 6px;
+    border-radius: 3px;
+    font-family: "SF Mono", "Monaco", "Consolas", monospace;
+    font-size: 13px;
+    color: #be185d;
+  }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 16px;
+    overflow-x: auto;
+    font-size: 13px;
+    line-height: 1.55;
+    font-family: "SF Mono", "Monaco", "Consolas", monospace;
+  }
+  pre code {
+    background: transparent;
+    border: none;
+    padding: 0;
+    color: var(--text);
+  }
+  blockquote {
+    border-left: 4px solid var(--accent);
+    margin: 16px 0;
+    padding: 8px 16px;
+    background: var(--code-bg);
+    color: var(--text-secondary);
+  }
+  footer {
+    margin-top: 64px;
+    padding-top: 16px;
+    border-top: 1px solid var(--border);
+    color: var(--text-secondary);
+    font-size: 13px;
+    text-align: center;
+  }
+  .sdd-list { display: grid; grid-template-columns: repeat(auto-fit, minmax(360px, 1fr)); gap: 16px; margin-top: 24px; }
+  .sdd-card { border: 1px solid var(--border-strong); border-radius: 6px; padding: 20px; background: var(--code-bg); }
+  .sdd-card h3 { margin: 0 0 8px; font-size: 16px; }
+  .sdd-card .desc { color: var(--text-secondary); font-size: 13px; }
+  .sdd-card a { text-decoration: none; color: var(--accent); }
+  .sdd-card .links { margin-top: 12px; font-size: 13px; }
+</style>
+</head>
+<body>
+
+<header class="doc-header">
+  <h1>FPGA Register Analyzer — 系統詳細設計</h1>
+  <div class="meta">版本：v0.4.0　|　日期：2026-05-14　|　開發者：Aaron Hsueh</div>
+</header>
+
+<p>本文件為 V-Model 中的「系統詳細設計 (SDD)」，按主題拆分為 5 份。請依序閱讀或按需查閱。</p>
+<p>高階「系統架構」（what &amp; why）請見 <a href="../architecture.html">../architecture.html</a>。</p>
+
+<h2>文件清單</h2>
+
+<div class="sdd-list">
+  <div class="sdd-card">
+    <h3>01 · 概述與元件分解</h3>
+    <p class="desc">V-Model 階層位置、前端 React 元件樹、後端服務分層</p>
+    <p class="links"><a href="01-overview-and-components.html">HTML</a> · <a href="01-overview-and-components.md">Markdown</a></p>
+  </div>
+  <div class="sdd-card">
+    <h3>02 · 資料模型與元件介面</h3>
+    <p class="desc">TypeScript / Pydantic / SQLite schema、Props 介面、REST API contract</p>
+    <p class="links"><a href="02-data-and-interfaces.html">HTML</a> · <a href="02-data-and-interfaces.md">Markdown</a></p>
+  </div>
+  <div class="sdd-card">
+    <h3>03 · 動態行為</h3>
+    <p class="desc">序列圖（6）、資料流圖（5）、狀態圖（4）— 共 15 張 Mermaid</p>
+    <p class="links"><a href="03-dynamics.html">HTML</a> · <a href="03-dynamics.md">Markdown</a></p>
+  </div>
+  <div class="sdd-card">
+    <h3>04 · 演算法詳述</h3>
+    <p class="desc">Bit-field 解析、組合分析、Range 涵蓋率、Histogram 分箱（偽程式碼）</p>
+    <p class="links"><a href="04-algorithms.html">HTML</a> · <a href="04-algorithms.md">Markdown</a></p>
+  </div>
+  <div class="sdd-card">
+    <h3>05 · 品質屬性</h3>
+    <p class="desc">錯誤處理、效能考量、安全考量、文件變更歷程</p>
+    <p class="links"><a href="05-quality.html">HTML</a> · <a href="05-quality.md">Markdown</a></p>
+  </div>
+</div>
+
+<h2>圖表類型統計</h2>
+<ul>
+  <li>序列圖：6 個（在 03）</li>
+  <li>資料流圖：5 個（在 03）</li>
+  <li>狀態圖：4 個（在 03）</li>
+  <li>結構圖（component tree / V-model graph）：4 個（在 01）</li>
+  <li>合計 19 個 Mermaid 圖</li>
+</ul>
+
+<footer>
+  FPGA Register Analyzer Detailed Design Index　|　v0.4.0　|　Aaron Hsueh
+</footer>
+
+</body>
+</html>
