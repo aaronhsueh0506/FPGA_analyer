@@ -9,18 +9,6 @@ echo  FPGA Register Analyzer - Launcher
 echo ============================================================
 echo.
 
-REM -- Check Python --
-python --version >nul 2>&1
-if errorlevel 1 (
-    echo [ERROR] Python not found.
-    echo         Please install Python 3.10 or above:
-    echo         https://www.python.org/downloads/
-    echo         (Remember to check "Add Python to PATH" during install)
-    echo.
-    pause
-    exit /b 1
-)
-
 REM -- Check frontend build exists; auto-build if npm is available --
 if not exist "%ROOT%frontend\dist\index.html" (
     echo [Setup] Frontend not built. Checking for npm...
@@ -51,7 +39,23 @@ REM -- First run: create Python virtual environment --
 if not exist "%ROOT%backend\venv\Scripts\activate.bat" (
     echo [Setup] Creating Python environment (first run, may take a minute)...
     cd /d "%ROOT%backend"
-    python -m venv venv
+    REM Try Windows Python Launcher first, then fall back to 'python'
+    py --version >nul 2>&1
+    if not errorlevel 1 (
+        py -m venv venv
+    ) else (
+        python --version >nul 2>&1
+        if errorlevel 1 (
+            echo [ERROR] Python not found. Please install Python 3.10+ and add to PATH.
+            echo         https://www.python.org/downloads/
+            echo         (Check "Add Python to PATH" during install)
+            echo.
+            pause
+            exit /b 1
+        )
+        python -m venv venv
+    )
+    cd /d "%ROOT%backend"
     call venv\Scripts\activate.bat
     pip install -r requirements.txt
     call deactivate
