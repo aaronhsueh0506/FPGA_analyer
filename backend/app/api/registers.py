@@ -83,6 +83,16 @@ async def upload_register(
         try:
             content = _xls_to_xlsx(content)
         except Exception as exc:
+            exc_msg = str(exc)
+            if "workbook" in exc_msg.lower() or "OLE2" in exc_msg:
+                raise HTTPException(
+                    status_code=422,
+                    detail=(
+                        "File is encrypted or IRM-protected. "
+                        "To fix: open in Excel, select-all (Ctrl+A), copy, paste into a NEW blank workbook, "
+                        "save as .xlsx, then upload that new file."
+                    ),
+                )
             raise HTTPException(status_code=422, detail=f"Cannot convert .xls: {exc}")
         if fname.lower().endswith(".xls"):
             fname = fname[:-4] + ".xlsx"
