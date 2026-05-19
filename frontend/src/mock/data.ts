@@ -203,13 +203,16 @@ export const mockBitFields: BitFieldDef[] = [
  */
 export function defaultBitFieldType(bf: BitFieldDef | number): BitFieldType {
   if (typeof bf === 'number') {
-    return 'mode'
+    return 'magnitude'
   }
-  const upper = bf.name.toUpperCase()
-  if (upper.includes('ERR') || upper.includes('CHKSUM')) {
+  const tokens = bf.name.toUpperCase().split('_')
+  if (tokens.some(t => t === 'ERR' || t === 'CHKSUM')) {
     return 'others'
   }
-  return 'mode'
+  if (tokens.some(t => t === 'EN' || t === 'ENABLE' || t === 'MODE')) {
+    return 'mode'
+  }
+  return 'magnitude'
 }
 
 /**

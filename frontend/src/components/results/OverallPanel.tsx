@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BatchSummary, BitFieldDef } from '../../mock/data'
 import type { TypeMap } from '../../hooks/useBitFieldTypes'
@@ -125,6 +125,18 @@ export default function OverallPanel({ summary, rows, bitFields, types, caseRang
     const names = pickedFields.map(i => bitFields[i]?.name).filter(Boolean)
     localStorage.setItem(comboKey, JSON.stringify(names))
   }, [pickedFields, comboKey, bitFields])
+
+  // Sync picked fields when user changes bit field types (skip initial load)
+  const typesReady = useRef(false)
+  useEffect(() => {
+    if (Object.keys(types).length === 0) return
+    if (!typesReady.current) { typesReady.current = true; return }
+    const modeIdx: number[] = []
+    for (let i = 0; i < bitFields.length; i++) {
+      if (types[bitFields[i].name] === 'mode') modeIdx.push(i)
+    }
+    setPickedFields(modeIdx.length >= MIN_FIELDS ? modeIdx : bitFields.map((_, i) => i).slice(0, MIN_FIELDS))
+  }, [types]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const togglePick = (idx: number) => {
     setPickedFields((prev) =>

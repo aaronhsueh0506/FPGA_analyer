@@ -1,8 +1,9 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getBatch, downloadCsvUrl, downloadXlsxUrl, type BatchDetailAPI } from '../api/batches'
 import type { BatchSummary, BitFieldDef } from '../mock/data'
+import { defaultBitFieldType } from '../mock/data'
 import { useBitFieldTypes } from '../hooks/useBitFieldTypes'
 import ResultsTable from '../components/results/ResultsTable'
 import DualRegisterChart from '../components/results/DualRegisterChart'
@@ -92,7 +93,7 @@ export default function Results() {
       } catch { /* ignore */ }
     }
     setVisibleIndices(
-      detail.bitFields.map((_, i) => i).filter(i => types[detail.bitFields[i].name] !== 'others')
+      detail.bitFields.map((_, i) => i).filter(i => defaultBitFieldType(detail.bitFields[i]) === 'mode')
     )
   }, [detail]) // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -102,6 +103,17 @@ export default function Results() {
     const names = visibleIndices.map(i => detail.bitFields[i].name)
     localStorage.setItem(visibleColsKey, JSON.stringify(names))
   }, [visibleIndices, visibleColsKey, detail])
+
+  // Sync visible columns when user changes bit field types (skip initial load)
+  const typesReady = useRef(false)
+  useEffect(() => {
+    if (Object.keys(types).length === 0) return
+    if (!typesReady.current) { typesReady.current = true; return }
+    if (!detail) return
+    setVisibleIndices(
+      detail.bitFields.map((_, i) => i).filter(i => types[detail.bitFields[i].name] === 'mode')
+    )
+  }, [types]) // eslint-disable-line react-hooks/exhaustive-deps
 
   if (loading) return <div className="page"><div className="empty-state">Loading...</div></div>
   if (error || !detail) return <div className="page"><div className="warning-banner">{error ?? 'Error'}</div></div>
