@@ -7,14 +7,20 @@ echo  FPGA Register Analyzer - Backend
 echo ============================================================
 echo.
 
-REM -- Locate backend directory relative to this script --
-set "HERE=%~dp0"
-set "BACKEND=%HERE%backend"
+REM ROOT is passed as first argument, or derived from script location
+if not "%~1"=="" (
+    set "ROOT=%~1"
+) else (
+    set "SCRIPTS_DIR=%~dp0"
+    for %%i in ("%SCRIPTS_DIR%..\..") do set "ROOT=%%~fi"
+    set "ROOT=%ROOT%\"
+)
+set "BACKEND=%ROOT%backend"
 
 echo [Step 1] Looking for backend at: %BACKEND%
 if not exist "%BACKEND%" (
     echo [ERROR] backend folder not found: %BACKEND%
-    echo         Make sure start_backend.bat is in the FPGA analyer root folder.
+    echo         Make sure the scripts folder is inside the FPGA analyer root folder.
     pause
     exit /b 1
 )
@@ -26,7 +32,7 @@ REM -- Check venv --
 echo [Step 2] Looking for Python venv...
 if not exist "venv\Scripts\activate.bat" (
     echo [ERROR] venv not found at: %CD%\venv
-    echo         Please run start.bat once to set up the environment.
+    echo         Please run scripts\Windows\start.bat once to set up the environment.
     pause
     exit /b 1
 )

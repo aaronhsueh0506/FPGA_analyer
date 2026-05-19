@@ -2,7 +2,10 @@
 chcp 65001 >nul
 title FPGA Register Analyzer - Launcher
 
-set "ROOT=%~dp0"
+REM Resolve project root (two levels up from this script)
+set "SCRIPTS_DIR=%~dp0"
+for %%i in ("%SCRIPTS_DIR%..\..") do set "ROOT=%%~fi"
+set "ROOT=%ROOT%\"
 
 echo ============================================================
 echo  FPGA Register Analyzer - Launcher
@@ -47,11 +50,11 @@ if exist "%ROOT%backend\venv\Scripts\activate.bat" (
     echo         venv not found. Creating Python virtual environment...
     echo         (first run, may take a minute)
     cd /d "%ROOT%backend"
-    echo         Trying: py -m venv --system-site-packages venv
-    py -m venv --system-site-packages venv
+    echo         Trying: py -m venv venv
+    py -m venv venv
     if not exist "%ROOT%backend\venv\Scripts\activate.bat" (
-        echo         py failed, trying: python -m venv --system-site-packages venv
-        python -m venv --system-site-packages venv
+        echo         py failed, trying: python -m venv venv
+        python -m venv venv
     )
     if not exist "%ROOT%backend\venv\Scripts\activate.bat" (
         echo [ERROR] Failed to create Python venv.
@@ -77,9 +80,7 @@ if exist "%ROOT%backend\venv\Scripts\activate.bat" (
 
 REM -- Start backend --
 echo [Step 3] Starting backend server...
-echo         Working dir for backend: %ROOT%backend
-echo         Command: call ..\start_backend.bat
-start "FPGA Analyzer" /d "%ROOT%backend" cmd /k "call ..\start_backend.bat"
+start "FPGA Analyzer" /d "%ROOT%backend" cmd /k "call \"%SCRIPTS_DIR%start_backend.bat\" \"%ROOT%\""
 
 REM -- Open browser after delay --
 echo [Step 4] Waiting 4 seconds for server to start, then opening browser...
