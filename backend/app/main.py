@@ -1,5 +1,6 @@
 import os
 import mimetypes
+mimetypes.init()
 mimetypes.add_type("application/javascript", ".js")
 mimetypes.add_type("text/css", ".css")
 from fastapi import FastAPI
