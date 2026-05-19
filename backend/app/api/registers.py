@@ -21,7 +21,8 @@ def _xls_to_xlsx(xls_bytes: bytes) -> bytes:
     wb_xlsx = openpyxl.Workbook()
     for sheet_idx in range(wb_xls.nsheets):
         ws_xls = wb_xls.sheet_by_index(sheet_idx)
-        visibility = wb_xls.sheet_visibility(sheet_idx)  # 0=visible,1=hidden,2=very hidden
+        vis_list = getattr(wb_xls, 'sheet_visibility', None)
+        visibility = vis_list[sheet_idx] if vis_list else 0  # 0=visible,1=hidden,2=very hidden
         print(f"[xls_to_xlsx] sheet[{sheet_idx}] name={ws_xls.name!r} visibility={visibility} nrows={ws_xls.nrows} ncols={ws_xls.ncols}")
         ws_xlsx = wb_xlsx.active if sheet_idx == 0 else wb_xlsx.create_sheet()
         ws_xlsx.title = ws_xls.name
