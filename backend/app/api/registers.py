@@ -72,13 +72,22 @@ async def upload_register(
 
     content = await file.read()
 
-    # Auto-convert .xls -> .xlsx
-    if fname.lower().endswith(".xls"):
+    # Detect actual format by magic bytes (ignore extension — some xlsx are OLE2 internally)
+    _OLE2_MAGIC = b'\xD0\xCF\x11\xE0'
+    _ZIP_MAGIC  = b'PK\x03\x04'
+    actual_fmt = 'xls' if content[:4] == _OLE2_MAGIC else ('xlsx' if content[:4] == _ZIP_MAGIC else 'unknown')
+    print(f"[upload] fname={fname!r}, magic={content[:4].hex()}, detected={actual_fmt}")
+
+    # Convert OLE2 (xls) regardless of declared extension
+    if actual_fmt == 'xls':
         try:
             content = _xls_to_xlsx(content)
         except Exception as exc:
             raise HTTPException(status_code=422, detail=f"Cannot convert .xls: {exc}")
-        fname = fname[:-4] + ".xlsx"
+        if fname.lower().endswith(".xls"):
+            fname = fname[:-4] + ".xlsx"
+    elif actual_fmt == 'unknown':
+        raise HTTPException(status_code=422, detail="File does not appear to be a valid Excel file (not OLE2 or zip/xlsx format)")
 
     # Save file to disk
     reg_dir = DATA_DIR / "registers"
