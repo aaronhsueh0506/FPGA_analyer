@@ -76,7 +76,7 @@ export default function Results() {
   const [columnModalOpen, setColumnModalOpen] = useState(false)
   const [typeModalOpen, setTypeModalOpen] = useState(false)
 
-  const visibleColsKey = detail ? `fpga-visible-cols-${detail.summary.registerName}` : null
+  const visibleColsKey = detail ? `fpga-visible-cols-v2-${detail.summary.registerName}` : null
 
   // Initialise range and visible columns once data loads
   useEffect(() => {

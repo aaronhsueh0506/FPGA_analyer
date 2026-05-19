@@ -95,7 +95,7 @@ export default function OverallPanel({ summary, rows, bitFields, types, caseRang
     return out
   }, [bitFields, types, slicedRows])
 
-  const comboKey = `fpga-combo-picked-${summary.registerName}`
+  const comboKey = `fpga-combo-picked-v2-${summary.registerName}`
 
   const initialPicked = useMemo<number[]>(() => {
     const saved = localStorage.getItem(comboKey)
