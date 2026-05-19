@@ -69,9 +69,10 @@ async def upload_register(
     dest = reg_dir / f"{ts}_{fname}"
     dest.write_bytes(content)
 
-    # Parse to get counts
+    # Parse to get counts (use in-memory bytes to avoid antivirus file lock)
     try:
-        registers, bitfields = parse_excel(dest)
+        import io as _io
+        registers, bitfields = parse_excel(_io.BytesIO(content))
     except Exception as exc:
         dest.unlink(missing_ok=True)
         raise HTTPException(status_code=422, detail=f"Cannot parse Excel: {exc}")
