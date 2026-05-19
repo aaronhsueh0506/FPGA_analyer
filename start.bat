@@ -21,16 +21,30 @@ if errorlevel 1 (
     exit /b 1
 )
 
-REM -- Check frontend build exists --
+REM -- Check frontend build exists; auto-build if npm is available --
 if not exist "%ROOT%frontend\dist\index.html" (
-    echo [ERROR] Frontend not built yet.
-    echo         Please ask the developer to run:
-    echo           cd frontend
-    echo           npm run build
-    echo         and include the frontend\dist\ folder before distributing.
+    echo [Setup] Frontend not built. Checking for npm...
+    where npm >nul 2>&1
+    if errorlevel 1 (
+        echo [ERROR] Frontend dist\ not found and npm is not installed.
+        echo         Please include the built frontend\dist\ folder,
+        echo         or install Node.js from https://nodejs.org/ and run start.bat again.
+        echo.
+        pause
+        exit /b 1
+    )
+    echo [Setup] Building frontend (first run, may take 1-2 minutes)...
+    cd /d "%ROOT%frontend"
+    call npm install --silent
+    call npm run build
+    cd /d "%ROOT%"
+    if not exist "%ROOT%frontend\dist\index.html" (
+        echo [ERROR] Frontend build failed. Check npm output above.
+        pause
+        exit /b 1
+    )
+    echo [Setup] Frontend built successfully.
     echo.
-    pause
-    exit /b 1
 )
 
 REM -- First run: create Python virtual environment --

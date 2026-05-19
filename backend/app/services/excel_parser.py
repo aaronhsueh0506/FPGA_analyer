@@ -52,29 +52,56 @@ def parse_excel(file_path: Union[str, Path]) -> Tuple[Dict[str, RegisterInfo], L
     # read_only=False: avoids XML-stream-consumed issue when BytesIO is iterated twice
     wb = openpyxl.load_workbook(file_path, read_only=False, data_only=True)
 
-    # Search all sheets for one containing an ADDR column header
+    # Search all sheets for one containing a proper header row:
+    # must have "ADDR" AND at least one companion column in the same row.
+    # This avoids false-positives where "ADDR" appears as a data value or title.
+    _COMPANION_COLS = {"REGISTER", "BITS", "MEMBER", "INI"}
     target_sheet_name = None
+    header_from_scan: int | None = None
+
     for ws_candidate in wb.worksheets:
         peek = list(ws_candidate.iter_rows(values_only=True, max_row=50))
-        if any(row and any(c is not None and str(c).strip().upper() == "ADDR" for c in row) for row in peek):
-            target_sheet_name = ws_candidate.title
+        for row_idx, row in enumerate(peek):
+            if not row:
+                continue
+            cells_upper = {
+                str(c).strip().upper()
+                for c in row
+                if c is not None and str(c).strip()
+            }
+            if "ADDR" in cells_upper and cells_upper & _COMPANION_COLS:
+                target_sheet_name = ws_candidate.title
+                header_from_scan = row_idx
+                break
+        if target_sheet_name:
             break
+
     ws = wb[target_sheet_name] if target_sheet_name else wb.active
 
     print(f"[excel_parser] sheets={[s.title for s in wb.worksheets]}, selected={ws.title!r}")
 
     rows = list(ws.iter_rows(values_only=True))
     print(f"[excel_parser] total rows={len(rows)}")
-    # Find header row (contains "ADDR" anywhere in the row)
-    header_row_idx = None
-    for i, row in enumerate(rows):
-        if row and any(c is not None and str(c).strip().upper() == "ADDR" for c in row):
-            header_row_idx = i
-            break
 
-    if header_row_idx is None:
-        # Fallback: assume row index 6 (7th row), capped to available rows
-        header_row_idx = min(6, len(rows) - 1)
+    # Use the header row found during the sheet scan when available;
+    # otherwise fall back to scanning rows (handles headers beyond row 50).
+    if header_from_scan is not None:
+        header_row_idx = header_from_scan
+    else:
+        header_row_idx = None
+        for i, row in enumerate(rows):
+            if not row:
+                continue
+            cells_upper = {
+                str(c).strip().upper()
+                for c in row
+                if c is not None and str(c).strip()
+            }
+            if "ADDR" in cells_upper and cells_upper & _COMPANION_COLS:
+                header_row_idx = i
+                break
+        if header_row_idx is None:
+            header_row_idx = min(6, len(rows) - 1)
 
     if header_row_idx < 0 or header_row_idx >= len(rows):
         raise ValueError(f"Cannot find header row with ADDR column (sheet has {len(rows)} rows)")
