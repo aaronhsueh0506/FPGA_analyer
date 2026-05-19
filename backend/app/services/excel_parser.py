@@ -85,12 +85,19 @@ def parse_excel(file_path: Union[str, Path]) -> Tuple[Dict[str, RegisterInfo], L
     ordered_bitfields: list[BitFieldInfo] = []
     current_addr: str | None = None
 
+    def _cell(row: tuple, idx: int):
+        return row[idx] if idx >= 0 and idx < len(row) else None
+
     for row in rows[header_row_idx + 1:]:
-        addr_val = row[addr_col] if addr_col >= 0 else None
-        reg_val = row[reg_col] if reg_col >= 0 else None
-        ini_val = row[ini_col] if ini_col >= 0 else None
-        bits_val = row[bits_col] if bits_col >= 0 else None
-        member_val = row[member_col] if member_col >= 0 else None
+        # Skip completely empty rows
+        if not row or all(c is None for c in row):
+            continue
+
+        addr_val = _cell(row, addr_col)
+        reg_val = _cell(row, reg_col)
+        ini_val = _cell(row, ini_col)
+        bits_val = _cell(row, bits_col)
+        member_val = _cell(row, member_col)
 
         # New register block
         if addr_val is not None and str(addr_val).strip():
