@@ -150,7 +150,7 @@
 
 <header class="doc-header">
   <h1>FPGA Register Analyzer — 系統架構文件</h1>
-  <div class="meta">版本：v0.25.0　|　日期：2026-05-19　|　開發者：Aaron Hsueh</div>
+  <div class="meta">版本：v0.31.0　|　日期：2026-05-20　|　開發者：Aaron Hsueh</div>
 </header>
 
 <div class="toc">
@@ -682,6 +682,17 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
 <ul>
   <li><strong>有效範圍 inline inputs → popup 按鈕</strong>：主列末尾改為小型按鈕，點擊後以 <code>createPortal</code> 彈出 popup 填寫 Min / Max；避免 inline inputs 擠壓類型 toggle。</li>
   <li><strong>i18n</strong>：新增 <code>colRange</code>、<code>rangeDefault</code>、<code>rangePopupTitle</code>、<code>clearRange</code>。</li>
+</ul>
+
+<h3>Phase 31 (v0.31) — 未知 Address 警告改為全批次摘要</h3>
+<ul>
+  <li><strong>警告去重邏輯修正</strong>：原本 <code>analyzer.py</code> 中 <code>seen_unknown</code> set 在整個 batch 共用，每個未知 address 只記錄第一個遇到的 dat 檔，導致警告看起來像「只有某一個 test case 有問題」，其實所有 dat 都有相同的未知 address。</li>
+  <li><strong>改為全批次計數</strong>：改用 <code>unknown_counts: Dict[str, int]</code> 統計每個未知 address 在幾個 test case 出現，batch 結束後產出摘要，格式為「Unknown address 0x{addr} (N test cases)」，語意正確、不誤導。</li>
+</ul>
+
+<h3>Phase 30 (v0.30) — Bit Field 類型設定 Toggle 寬度修正</h3>
+<ul>
+  <li><strong>英文模式空白修正</strong>：<code>BitFieldTypeModal</code> 的三選一 toggle（Mode / Magnitude / Others）使用 <code>.inline-toggle</code>（<code>display: inline-flex</code>），中文文字剛好填滿欄位，切換英文後右側出現空白。改為 inline style 覆寫 <code>display: flex; width: 100%</code>，每個 button 加 <code>flex: 1</code>，中英文外觀一致。</li>
 </ul>
 
 <h3>Phase 26 (v0.26) — Prefix 修正 + 時區修正 + Bit Field 有效範圍設定</h3>

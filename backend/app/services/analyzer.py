@@ -21,15 +21,14 @@ def analyze(
 ) -> AnalysisResult:
     warnings: List[str] = []
     rows: List[dict] = []
-    seen_unknown: set = set()
+    unknown_counts: Dict[str, int] = {}
 
     for filename, addr_val_map in dat_files:
         values: List[Optional[int]] = []
 
         for addr in addr_val_map:
-            if addr not in registers and addr not in seen_unknown:
-                warnings.append(f"Unknown address 0x{addr} in {filename}")
-                seen_unknown.add(addr)
+            if addr not in registers:
+                unknown_counts[addr] = unknown_counts.get(addr, 0) + 1
 
         for bf in ordered_bitfields:
             addr = bf.register_addr
@@ -45,5 +44,8 @@ def analyze(
                 values.append(extracted)
 
         rows.append({"testCase": filename, "values": values})
+
+    for addr, count in sorted(unknown_counts.items()):
+        warnings.append(f"Unknown address 0x{addr} ({count} test case{'s' if count != 1 else ''})")
 
     return AnalysisResult(rows=rows, warnings=warnings, bitfields=ordered_bitfields)
