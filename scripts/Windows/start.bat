@@ -4,8 +4,9 @@ title FPGA Register Analyzer - Launcher
 
 REM Resolve project root (two levels up from this script)
 set "SCRIPTS_DIR=%~dp0"
-for %%i in ("%SCRIPTS_DIR%..\..") do set "ROOT=%%~fi"
-set "ROOT=%ROOT%\"
+pushd "%SCRIPTS_DIR%..\.."
+set "ROOT=%CD%\"
+popd
 
 echo ============================================================
 echo  FPGA Register Analyzer - Launcher
@@ -66,8 +67,8 @@ if exist "%ROOT%backend\venv\Scripts\activate.bat" (
         exit /b 1
     )
     echo         venv created. Installing requirements...
-    call venv\Scripts\activate.bat
-    pip install -r requirements.txt
+    call "%ROOT%backend\venv\Scripts\activate.bat"
+    pip install -r "%ROOT%backend\requirements.txt"
     if errorlevel 1 (
         echo [ERROR] pip install failed. Check output above.
         pause
@@ -78,12 +79,22 @@ if exist "%ROOT%backend\venv\Scripts\activate.bat" (
     echo.
 )
 
+REM -- Check if port 8000 is in use and release it --
+echo [Step 3] Checking port 8000...
+for /f "tokens=5" %%p in ('netstat -ano 2^>nul ^| findstr ":8000 " ^| findstr "LISTENING"') do (
+    echo         Port 8000 occupied (PID: %%p). Stopping old process...
+    taskkill /F /PID %%p >nul 2>&1
+)
+timeout /t 1 /nobreak >nul
+echo         Port check done.
+echo.
+
 REM -- Start backend --
-echo [Step 3] Starting backend server...
-start "FPGA Analyzer" /d "%ROOT%backend" cmd /k "call \"%SCRIPTS_DIR%start_backend.bat\" \"%ROOT%\""
+echo [Step 4] Starting backend server...
+start "FPGA Analyzer" /d "%ROOT%backend" cmd /k "%SCRIPTS_DIR%start_backend.bat"
 
 REM -- Open browser after delay --
-echo [Step 4] Waiting 4 seconds for server to start, then opening browser...
+echo [Step 5] Waiting 4 seconds for server to start, then opening browser...
 timeout /t 4 /nobreak >nul
 start "" "http://localhost:8000"
 

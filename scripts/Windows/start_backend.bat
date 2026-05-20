@@ -7,14 +7,10 @@ echo  FPGA Register Analyzer - Backend
 echo ============================================================
 echo.
 
-REM ROOT is passed as first argument, or derived from script location
-if not "%~1"=="" (
-    set "ROOT=%~1"
-) else (
-    set "SCRIPTS_DIR=%~dp0"
-    for %%i in ("%SCRIPTS_DIR%..\..") do set "ROOT=%%~fi"
-    set "ROOT=%ROOT%\"
-)
+REM Derive root from this script's location (two levels up from scripts\Windows\)
+pushd "%~dp0..\.."
+set "ROOT=%CD%\"
+popd
 set "BACKEND=%ROOT%backend"
 
 echo [Step 1] Looking for backend at: %BACKEND%
