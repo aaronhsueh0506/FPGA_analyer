@@ -116,18 +116,9 @@ export default function Results() {
     )
   }, [types]) // eslint-disable-line react-hooks/exhaustive-deps
 
-  if (loading) return <div className="page"><div className="empty-state">Loading...</div></div>
-  if (error || !detail) return <div className="page"><div className="warning-banner">{error ?? 'Error'}</div></div>
-
-  const clampedFrom = Math.max(1, Math.min(caseFrom, sortedRows.length))
-  const clampedTo = Math.max(clampedFrom, Math.min(caseTo || sortedRows.length, sortedRows.length))
-  const caseRange = { from: clampedFrom, to: clampedTo }
-  const rangedRows = sortedRows.slice(clampedFrom - 1, clampedTo)
-
-  const showCaseRangeToolbar = tab === 'table' || tab === 'dual' || tab === 'stats' || tab === 'overall'
-
-  // Compute out-of-range violations across ALL rows (not just caseRange)
+  // Must be before early returns to comply with Rules of Hooks
   const outOfRangeWarnings = useMemo(() => {
+    if (!detail) return []
     const violations: Array<{ testCase: string; field: string; value: number; min?: number; max?: number }> = []
     for (const row of sortedRows) {
       for (let i = 0; i < detail.bitFields.length; i++) {
@@ -142,7 +133,17 @@ export default function Results() {
       }
     }
     return violations
-  }, [sortedRows, detail.bitFields, types, rangeMap]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [sortedRows, detail, types, rangeMap])
+
+  if (loading) return <div className="page"><div className="empty-state">Loading...</div></div>
+  if (error || !detail) return <div className="page"><div className="warning-banner">{error ?? 'Error'}</div></div>
+
+  const clampedFrom = Math.max(1, Math.min(caseFrom, sortedRows.length))
+  const clampedTo = Math.max(clampedFrom, Math.min(caseTo || sortedRows.length, sortedRows.length))
+  const caseRange = { from: clampedFrom, to: clampedTo }
+  const rangedRows = sortedRows.slice(clampedFrom - 1, clampedTo)
+
+  const showCaseRangeToolbar = tab === 'table' || tab === 'dual' || tab === 'stats' || tab === 'overall'
 
   return (
     <div className="page">
