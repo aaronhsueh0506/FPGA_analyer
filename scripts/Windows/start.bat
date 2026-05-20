@@ -100,7 +100,7 @@ REM Step 3: Check port 8000
 REM ============================================================
 echo [Step 3] Checking port 8000...
 netstat -ano 2>nul | findstr ":8000 " | findstr "LISTENING" > "%TEMP%\_fpga_port8000.txt" 2>nul
-for /f "tokens=5" %%p in (%TEMP%\_fpga_port8000.txt) do (
+for /f "usebackq tokens=5" %%p in ("%TEMP%\_fpga_port8000.txt") do (
     echo         Port 8000 occupied (PID: %%p). Stopping old process...
     taskkill /F /PID %%p >nul 2>&1
 )
