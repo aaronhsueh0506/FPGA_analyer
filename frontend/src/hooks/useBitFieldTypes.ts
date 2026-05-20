@@ -3,8 +3,11 @@ import type { BitFieldDef, BitFieldType } from '../mock/data'
 import { defaultBitFieldType } from '../mock/data'
 
 const STORAGE_PREFIX = 'fpga-bit-field-types-'
+const RANGE_STORAGE_PREFIX = 'fpga-bit-field-ranges-'
 
 export type TypeMap = Record<string, BitFieldType>
+export interface FieldRange { min?: number; max?: number }
+export type RangeMap = Record<string, FieldRange>
 
 function loadFromStorage(registerId: number | string): TypeMap | null {
   try {
@@ -12,6 +15,15 @@ function loadFromStorage(registerId: number | string): TypeMap | null {
     return raw ? (JSON.parse(raw) as TypeMap) : null
   } catch {
     return null
+  }
+}
+
+function loadRangesFromStorage(registerId: number | string): RangeMap {
+  try {
+    const raw = localStorage.getItem(RANGE_STORAGE_PREFIX + registerId)
+    return raw ? (JSON.parse(raw) as RangeMap) : {}
+  } catch {
+    return {}
   }
 }
 
@@ -24,7 +36,7 @@ function buildDefaults(bitFields: BitFieldDef[]): TypeMap {
 }
 
 /**
- * 讀取 / 寫入「bit field 類型」設定到 localStorage。
+ * 讀取 / 寫入「bit field 類型」與「有效範圍」設定到 localStorage。
  * 每個 register definition 一份設定。
  */
 export function useBitFieldTypes(registerId: number | string, bitFields: BitFieldDef[]) {
@@ -33,9 +45,14 @@ export function useBitFieldTypes(registerId: number | string, bitFields: BitFiel
     return stored ?? buildDefaults(bitFields)
   })
 
+  const [rangeMap, setRangeMapState] = useState<RangeMap>(() =>
+    loadRangesFromStorage(registerId)
+  )
+
   useEffect(() => {
     const stored = loadFromStorage(registerId)
     setTypes(stored ?? buildDefaults(bitFields))
+    setRangeMapState(loadRangesFromStorage(registerId))
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [registerId])
 
@@ -58,8 +75,21 @@ export function useBitFieldTypes(registerId: number | string, bitFields: BitFiel
     localStorage.removeItem(STORAGE_PREFIX + registerId)
   }
 
+  const setRangeMap = (map: RangeMap) => {
+    setRangeMapState(map)
+    localStorage.setItem(RANGE_STORAGE_PREFIX + registerId, JSON.stringify(map))
+  }
+
+  const isOutOfRange = (fieldName: string, value: number): boolean => {
+    const r = rangeMap[fieldName]
+    if (!r) return false
+    if (r.min !== undefined && value < r.min) return true
+    if (r.max !== undefined && value > r.max) return true
+    return false
+  }
+
   const isMode = (name: string) => types[name] === 'mode'
   const modeFieldNames = () => bitFields.filter((bf) => types[bf.name] === 'mode').map((bf) => bf.name)
 
-  return { types, update, bulkSet, reset, isMode, modeFieldNames }
+  return { types, update, bulkSet, reset, rangeMap, setRangeMap, isOutOfRange, isMode, modeFieldNames }
 }

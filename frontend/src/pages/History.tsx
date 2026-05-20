@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { listBatches, deleteBatch, type BatchSummaryAPI } from '../api/batches'
+import { formatLocalDate } from '../api/dateUtils'
 
 export default function History() {
   const { t } = useTranslation()
@@ -68,7 +69,7 @@ export default function History() {
                         <span style={{ color: 'var(--text-tertiary)' }}>0</span>
                       )}
                     </td>
-                    <td>{new Date(b.analyzed_at).toLocaleString()}</td>
+                    <td>{formatLocalDate(b.analyzed_at)}</td>
                     <td style={{ display: 'flex', gap: 6 }}>
                       <Link to={`/results/${b.id}`} className="btn btn-sm btn-primary">
                         {t('history.view')}

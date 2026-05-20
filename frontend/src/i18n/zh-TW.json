@@ -98,6 +98,12 @@
     "testCase": "Test Case",
     "noWarnings": "本批次沒有警告訊息",
     "unknownAddrTitle": "未知 address 列表",
+    "outOfRangeTitle": "超出有效範圍的數值",
+    "outOfRangeHint": "以下 test case 的 bit field 數值超出在「Bit Field 類型設定」中設定的有效範圍",
+    "outOfRangeColCase": "Test Case",
+    "outOfRangeColField": "Bit Field",
+    "outOfRangeColValue": "數值",
+    "outOfRangeColRange": "有效範圍",
     "tabDualRegister": "資料散佈分析",
     "tabStats": "統計分析",
     "tabOverall": "Overall",
@@ -176,7 +182,9 @@
       "colName": "Bit Field",
       "colWidth": "位元寬度",
       "colRegister": "Register",
-      "colType": "類型"
+      "colType": "類型",
+      "colMin": "最小值",
+      "colMax": "最大值"
     }
   },
   "history": {

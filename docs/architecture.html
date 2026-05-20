@@ -664,6 +664,14 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
   <li>修正 xlrd <code>sheet_visibility</code> 屬性應以 list index 存取。</li>
 </ul>
 
+<h3>Phase 26 (v0.26) — Prefix 修正 + 時區修正 + Bit Field 有效範圍設定</h3>
+<ul>
+  <li><strong>Prefix 大小寫不分 + 資料夾上傳相容</strong>：<code>extractCaseNumber()</code> 加 <code>i</code> flag（case-insensitive），修正資料夾上傳（<code>folder/speg1.dat</code>）時誤回傳資料夾名的問題，現在取出 <code>/</code> 後的檔名再套 prefix regex。</li>
+  <li><strong>時區修正</strong>：後端 <code>datetime.utcnow()</code> 改為 <code>datetime.now(timezone.utc)</code>，序列化帶 <code>+00:00</code>。前端新增 <code>formatLocalDate()</code>，舊資料自動補 <code>Z</code>，全站時間顯示均為本地時區。</li>
+  <li><strong>Bit Field 有效範圍設定</strong>：「Bit Field 類型設定」Modal 的 magnitude 欄位新增 Min / Max 輸入框，設定存入 localStorage（<code>fpga-bit-field-ranges-{registerId}</code>）。表格中超出範圍的數值紅色標示，滑鼠懸停顯示有效範圍。</li>
+  <li><strong>超出範圍警告</strong>：警告訊息 Tab 新增「超出有效範圍的數值」表格（置於未知 address 上方），Tab 計數含超出範圍筆數。</li>
+</ul>
+
 <h3>Phase 25 (v0.25) — 啟動腳本修正 + localStorage 版本升級</h3>
 <ul>
   <li><strong>macOS 啟動腳本</strong>：<code>scripts/macOS/start.sh</code> 新增 Step 3，啟動前自動偵測 port 8000 是否被佔用（<code>lsof -ti :8000</code>），若有則強制終止舊 process，解決重複啟動後 <code>[Errno 48] address already in use</code> 的問題。</li>

@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { getBatch, downloadCsvUrl, downloadXlsxUrl, type BatchDetailAPI } from '../api/batches'
+import { formatLocalDate } from '../api/dateUtils'
 import type { BatchSummary, BitFieldDef } from '../mock/data'
 import { defaultBitFieldType } from '../mock/data'
 import { useBitFieldTypes } from '../hooks/useBitFieldTypes'
@@ -22,7 +23,7 @@ function apiToDetail(api: BatchDetailAPI) {
     registerName: api.summary.register_name,
     datCount: api.summary.dat_count ?? 0,
     warningCount: api.summary.warning_count,
-    analyzedAt: new Date(api.summary.analyzed_at).toLocaleString(),
+    analyzedAt: formatLocalDate(api.summary.analyzed_at),
   }
   const bitFields: BitFieldDef[] = api.bitFields.map((bf) => ({
     name: bf.name,
@@ -62,7 +63,7 @@ export default function Results() {
     )
   }, [detail])
 
-  const { types, bulkSet, reset } = useBitFieldTypes(
+  const { types, bulkSet, reset, rangeMap, setRangeMap } = useBitFieldTypes(
     detail?.summary.registerName ?? '',
     detail?.bitFields ?? []
   )
@@ -124,6 +125,24 @@ export default function Results() {
   const rangedRows = sortedRows.slice(clampedFrom - 1, clampedTo)
 
   const showCaseRangeToolbar = tab === 'table' || tab === 'dual' || tab === 'stats' || tab === 'overall'
+
+  // Compute out-of-range violations across ALL rows (not just caseRange)
+  const outOfRangeWarnings = useMemo(() => {
+    const violations: Array<{ testCase: string; field: string; value: number; min?: number; max?: number }> = []
+    for (const row of sortedRows) {
+      for (let i = 0; i < detail.bitFields.length; i++) {
+        const bf = detail.bitFields[i]
+        if (types[bf.name] !== 'magnitude') continue
+        const r = rangeMap[bf.name]
+        if (!r) continue
+        const v = row.values[i] ?? 0
+        if ((r.min !== undefined && v < r.min) || (r.max !== undefined && v > r.max)) {
+          violations.push({ testCase: row.testCase, field: bf.name, value: v, min: r.min, max: r.max })
+        }
+      }
+    }
+    return violations
+  }, [sortedRows, detail.bitFields, types, rangeMap]) // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div className="page">
@@ -192,7 +211,12 @@ export default function Results() {
             {t_ === 'stats' && t('results.tabStats')}
             {t_ === 'overall' && t('results.tabOverall')}
             {t_ === 'warnings' && (
-              <>{t('results.tabWarnings')}{detail.summary.warningCount > 0 ? ` (${detail.summary.warningCount})` : ''}</>
+              <>
+                {t('results.tabWarnings')}
+                {(detail.summary.warningCount > 0 || outOfRangeWarnings.length > 0)
+                  ? ` (${detail.summary.warningCount + outOfRangeWarnings.length})`
+                  : ''}
+              </>
             )}
           </button>
         ))}
@@ -209,6 +233,8 @@ export default function Results() {
             prefix={prefix}
             setPrefix={setPrefix}
             onOpenColumnSelector={() => setColumnModalOpen(true)}
+            types={types}
+            rangeMap={rangeMap}
           />
         )}
 
@@ -240,17 +266,49 @@ export default function Results() {
         )}
 
         {tab === 'warnings' && (
-          <div className="card">
-            {detail.warnings.length === 0 ? (
-              <div className="empty-state">{t('results.noWarnings')}</div>
-            ) : (
-              <>
-                <h3 className="card-title">{t('results.unknownAddrTitle')}</h3>
-                <ul className="simple-list">
-                  {detail.warnings.map((w, i) => <li key={i} className="mono">{w}</li>)}
-                </ul>
-              </>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            {outOfRangeWarnings.length > 0 && (
+              <div className="card">
+                <h3 className="card-title">{t('results.outOfRangeTitle')} ({outOfRangeWarnings.length})</h3>
+                <p className="card-subtitle">{t('results.outOfRangeHint')}</p>
+                <div className="table-scroll">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>{t('results.outOfRangeColCase')}</th>
+                        <th>{t('results.outOfRangeColField')}</th>
+                        <th>{t('results.outOfRangeColValue')}</th>
+                        <th>{t('results.outOfRangeColRange')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {outOfRangeWarnings.map((w, i) => (
+                        <tr key={i}>
+                          <td className="mono">{w.testCase}</td>
+                          <td className="mono">{w.field}</td>
+                          <td className="mono text-center" style={{ color: 'var(--color-error, #dc2626)' }}>{w.value}</td>
+                          <td className="mono text-center">
+                            {w.min !== undefined ? w.min : '—'} ~ {w.max !== undefined ? w.max : '—'}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
             )}
+            <div className="card">
+              {detail.warnings.length === 0 ? (
+                <div className="empty-state">{t('results.noWarnings')}</div>
+              ) : (
+                <>
+                  <h3 className="card-title">{t('results.unknownAddrTitle')}</h3>
+                  <ul className="simple-list">
+                    {detail.warnings.map((w, i) => <li key={i} className="mono">{w}</li>)}
+                  </ul>
+                </>
+              )}
+            </div>
           </div>
         )}
       </ErrorBoundary>
@@ -272,6 +330,8 @@ export default function Results() {
         bitFields={detail.bitFields}
         types={types}
         onApply={bulkSet}
+        onApplyRanges={setRangeMap}
+        rangeMap={rangeMap}
         onReset={reset}
       />
     </div>

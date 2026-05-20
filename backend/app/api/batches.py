@@ -1,5 +1,5 @@
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -84,15 +84,16 @@ async def create_batch(
     result = analyze(reg_dict, bitfields, dat_inputs)
 
     # Persist results
-    batch_name = datetime.utcnow().strftime("%Y%m%d_%H%M%S")
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
+    now = datetime.now(timezone.utc)
+    batch_name = now.strftime("%Y%m%d_%H%M%S")
+    ts = now.strftime("%Y%m%d_%H%M%S_%f")
 
     batch_record = BatchORM(
         name=batch_name,
         register_definition_id=register_id,
         dat_count=len(dat_inputs),
         warning_count=len(result.warnings),
-        analyzed_at=datetime.utcnow(),
+        analyzed_at=now,
     )
     db.add(batch_record)
     db.commit()

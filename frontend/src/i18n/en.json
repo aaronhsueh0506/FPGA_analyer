@@ -98,6 +98,12 @@
     "testCase": "Test Case",
     "noWarnings": "No warnings for this batch",
     "unknownAddrTitle": "Unknown addresses",
+    "outOfRangeTitle": "Out-of-Range Values",
+    "outOfRangeHint": "The following test cases have bit field values outside the valid range set in Bit Field Type Settings",
+    "outOfRangeColCase": "Test Case",
+    "outOfRangeColField": "Bit Field",
+    "outOfRangeColValue": "Value",
+    "outOfRangeColRange": "Valid Range",
     "tabDualRegister": "Distribution Scatter",
     "tabStats": "Statistics",
     "tabOverall": "Overall",
@@ -176,7 +182,9 @@
       "colName": "Bit Field",
       "colWidth": "Width",
       "colRegister": "Register",
-      "colType": "Type"
+      "colType": "Type",
+      "colMin": "Min",
+      "colMax": "Max"
     }
   },
   "history": {

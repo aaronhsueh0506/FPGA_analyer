@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { listRegisters, type RegisterDefinition } from '../api/registers'
 import { listBatches, type BatchSummaryAPI } from '../api/batches'
+import { formatLocalDate } from '../api/dateUtils'
 
 export default function Dashboard() {
   const { t } = useTranslation()
@@ -65,7 +66,7 @@ export default function Dashboard() {
               <Link key={b.id} to={`/results/${b.id}`} className="recent-item" style={{ textDecoration: 'none', color: 'inherit' }}>
                 <div>
                   <div style={{ fontWeight: 600 }}>{b.name}</div>
-                  <div className="recent-meta">{b.register_name} · {b.dat_count} dat · {new Date(b.analyzed_at).toLocaleString()}</div>
+                  <div className="recent-meta">{b.register_name} · {b.dat_count} dat · {formatLocalDate(b.analyzed_at)}</div>
                 </div>
                 <div className="recent-meta">{b.warning_count > 0 ? `${b.warning_count} warnings` : 'OK'}</div>
               </Link>

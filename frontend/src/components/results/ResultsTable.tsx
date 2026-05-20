@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { BitFieldDef } from '../../mock/data'
+import type { BitFieldDef, BitFieldType } from '../../mock/data'
+import type { RangeMap } from '../../hooks/useBitFieldTypes'
 
 type Format = 'hex' | 'dec'
 
@@ -13,24 +14,36 @@ interface Props {
   prefix: string
   setPrefix: (p: string) => void
   onOpenColumnSelector: () => void
+  types?: Record<string, BitFieldType>
+  rangeMap?: RangeMap
 }
 
 const ROWS_PER_PAGE_OPTIONS = [10, 50, 100, 500]
 
 function extractCaseNumber(testCase: string, prefix: string): string {
-  // Folder-based upload: "name1/xx_reg.dat" → show "name1"
+  // Strip folder path (folder uploads send "folder/speg1.dat")
   const slashIdx = testCase.lastIndexOf('/')
-  if (slashIdx !== -1) return testCase.slice(0, slashIdx)
-  // Regular file: use prefix+number extraction
-  if (!prefix) return testCase
-  const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\d+)`)
-  const m = testCase.match(re)
-  return m ? `#${m[1]}` : testCase
+  const filename = slashIdx !== -1 ? testCase.slice(slashIdx + 1) : testCase
+  // Apply prefix+number extraction
+  if (!prefix) return filename
+  const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\d+)`, 'i')
+  const m = filename.match(re)
+  return m ? `#${m[1]}` : filename
+}
+
+function isOutOfRange(value: number, fieldName: string, types?: Record<string, BitFieldType>, rangeMap?: RangeMap): boolean {
+  if (!types || !rangeMap) return false
+  if (types[fieldName] !== 'magnitude') return false
+  const r = rangeMap[fieldName]
+  if (!r) return false
+  if (r.min !== undefined && value < r.min) return true
+  if (r.max !== undefined && value > r.max) return true
+  return false
 }
 
 export default function ResultsTable({
   rows, bitFields, visibleIndices, format, setFormat,
-  prefix, setPrefix, onOpenColumnSelector
+  prefix, setPrefix, onOpenColumnSelector, types, rangeMap
 }: Props) {
   const { t } = useTranslation()
   const [rowsPerPage, setRowsPerPage] = useState(100)
@@ -133,9 +146,20 @@ export default function ResultsTable({
                   >
                     {extractCaseNumber(row.testCase, prefix)}
                   </td>
-                  {visibleIndices.map((idx) => (
-                    <td key={idx} className="mono">{formatValue(row.values[idx])}</td>
-                  ))}
+                  {visibleIndices.map((idx) => {
+                    const v = row.values[idx]
+                    const oor = isOutOfRange(v, bitFields[idx].name, types, rangeMap)
+                    return (
+                      <td
+                        key={idx}
+                        className="mono"
+                        style={oor ? { background: 'rgba(220, 38, 38, 0.12)', color: '#dc2626' } : undefined}
+                        title={oor ? `Out of range [${rangeMap?.[bitFields[idx].name]?.min ?? '—'}, ${rangeMap?.[bitFields[idx].name]?.max ?? '—'}]` : undefined}
+                      >
+                        {formatValue(v)}
+                      </td>
+                    )
+                  })}
                 </tr>
               ))}
             </tbody>

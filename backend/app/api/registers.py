@@ -1,6 +1,6 @@
 import io
 from pathlib import Path
-from datetime import datetime
+from datetime import datetime, timezone
 
 import xlrd
 import openpyxl
@@ -102,7 +102,7 @@ async def upload_register(
 
     # Save file to disk
     reg_dir = DATA_DIR / "registers"
-    ts = datetime.utcnow().strftime("%Y%m%d_%H%M%S_%f")
+    ts = datetime.now(timezone.utc).strftime("%Y%m%d_%H%M%S_%f")
     dest = reg_dir / f"{ts}_{fname}"
     dest.write_bytes(content)
 

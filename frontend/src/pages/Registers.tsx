@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { listRegisters, uploadRegister, deleteRegister, renameRegister, type RegisterDefinition } from '../api/registers'
+import { formatLocalDate } from '../api/dateUtils'
 
 export default function Registers() {
   const { t } = useTranslation()
@@ -177,7 +178,7 @@ export default function Registers() {
                     <td className="mono">{r.original_filename}</td>
                     <td>{r.register_count}</td>
                     <td>{r.bitfield_count}</td>
-                    <td>{new Date(r.uploaded_at).toLocaleString()}</td>
+                    <td>{formatLocalDate(r.uploaded_at)}</td>
                     <td>
                       <button className="btn btn-sm btn-danger" onClick={() => handleDelete(r.id)}>
                         {t('registers.actionDelete')}
