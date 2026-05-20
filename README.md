@@ -103,17 +103,22 @@ If you want to distribute the tool as a standalone `.exe` so colleagues do not n
 
 3. Before running PyInstaller, the FastAPI application needs to be configured to serve the frontend static files from `frontend/dist/`. Verify that `backend/app/main.py` includes the static file mount (contact the developer if unsure).
 
-4. Run PyInstaller from the `backend` folder:
+4. Run PyInstaller from the `backend` folder (use `%CD%` for `--add-data` so paths resolve from `backend\`, not from the spec file location):
    ```
-   pyinstaller --onedir --name fpga-analyzer app/main.py ^
-     --add-data "app;app" ^
-     --add-data "..\frontend\dist;frontend\dist" ^
+   pyinstaller --onedir --name fpga-analyzer app\main.py ^
+     --distpath "..\release" ^
+     --workpath "..\release\build_tmp" ^
+     --specpath "..\release" ^
+     --add-data "%CD%\app;app" ^
+     --add-data "%CD%\..\frontend\dist;frontend\dist" ^
      --hidden-import uvicorn.logging ^
      --hidden-import uvicorn.loops.auto ^
      --hidden-import uvicorn.protocols.http.auto
    ```
 
-5. The output will be in `backend/dist/fpga-analyzer/`. Copy that folder together with an empty `data/` directory to the target machine.
+   If `openpyxl` data files are missing at runtime, add `--collect-data openpyxl` to the command.
+
+5. The output will be in `release\fpga-analyzer\`. Copy that folder together with an empty `data\` directory to the target machine.
 
 6. On the target machine, double-click `fpga-analyzer.exe` to start the server, then open `http://localhost:8000` in a browser.
 
@@ -121,8 +126,6 @@ If you want to distribute the tool as a standalone `.exe` so colleagues do not n
 
 - PyInstaller must run on Windows to produce a Windows executable. Cross-compilation from macOS is not supported.
 - The `--onedir` option is recommended over `--onefile` because it starts significantly faster.
-- If `openpyxl` data files are not included automatically, add `--collect-data openpyxl` to the PyInstaller command.
-
 ---
 
 ## Directory Structure
