@@ -39,53 +39,53 @@ function RangePopup({
     <div className="modal-backdrop" style={{ zIndex: 1100 }} onClick={onClose}>
       <div
         className="modal"
-        style={{ maxWidth: 320, width: '90%' }}
+        style={{ maxWidth: 340, width: '90%' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <h3 className="modal-title">{t('results.bitFieldType.rangePopupTitle')}</h3>
-        <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginTop: 0, marginBottom: 16 }} className="mono">
+        <h3 className="modal-title" style={{ marginBottom: 4 }}>
+          {t('results.bitFieldType.rangePopupTitle')}
+        </h3>
+        <p className="mono" style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 16px' }}>
           {state.fieldName}
         </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-            <span style={{ width: 32, color: 'var(--text-secondary)' }}>{t('results.bitFieldType.colMin')}</span>
-            <input
-              type="number"
-              autoFocus
-              style={{ flex: 1, fontSize: 13, padding: '4px 8px' }}
-              placeholder="—"
-              value={min}
-              onChange={(e) => setMin(e.target.value)}
-            />
-          </label>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 13 }}>
-            <span style={{ width: 32, color: 'var(--text-secondary)' }}>{t('results.bitFieldType.colMax')}</span>
-            <input
-              type="number"
-              style={{ flex: 1, fontSize: 13, padding: '4px 8px' }}
-              placeholder="—"
-              value={max}
-              onChange={(e) => setMax(e.target.value)}
-            />
-          </label>
+        <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr', gap: '10px 8px', alignItems: 'center' }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'right' }}>
+            {t('results.bitFieldType.colMin')}
+          </span>
+          <input
+            type="number"
+            autoFocus
+            style={{ fontSize: 13, padding: '5px 8px', width: '100%' }}
+            placeholder="—"
+            value={min}
+            onChange={(e) => setMin(e.target.value)}
+          />
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'right' }}>
+            {t('results.bitFieldType.colMax')}
+          </span>
+          <input
+            type="number"
+            style={{ fontSize: 13, padding: '5px 8px', width: '100%' }}
+            placeholder="—"
+            value={max}
+            onChange={(e) => setMax(e.target.value)}
+          />
         </div>
-        <div className="modal-actions" style={{ marginTop: 16 }}>
-          <button
-            className="btn btn-sm"
-            onClick={() => { setMin(''); setMax('') }}
-          >
+        <div className="modal-actions" style={{ marginTop: 20 }}>
+          <button className="btn btn-sm" onClick={() => { setMin(''); setMax('') }}>
             {t('results.bitFieldType.clearRange')}
           </button>
-          <button className="btn btn-sm" style={{ marginLeft: 'auto' }} onClick={onClose}>
-            {t('common.cancel')}
-          </button>
-          <button
-            className="btn btn-primary btn-sm"
-            style={{ marginLeft: 8 }}
-            onClick={() => { onApply(state.fieldName, min, max); onClose() }}
-          >
-            {t('results.apply')}
-          </button>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            <button className="btn btn-sm" onClick={onClose}>
+              {t('common.cancel')}
+            </button>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={() => { onApply(state.fieldName, min, max); onClose() }}
+            >
+              {t('results.apply')}
+            </button>
+          </div>
         </div>
       </div>
     </div>,
@@ -146,9 +146,14 @@ export default function BitFieldTypeModal({
     setDraftRanges({})
   }
 
+  const hasRange = (name: string) => {
+    const r = draftRanges[name]
+    return r && (r.min !== undefined || r.max !== undefined)
+  }
+
   const rangeLabel = (name: string) => {
     const r = draftRanges[name]
-    if (!r || (r.min === undefined && r.max === undefined)) return '—'
+    if (!r || (r.min === undefined && r.max === undefined)) return t('results.bitFieldType.rangeDefault')
     const lo = r.min !== undefined ? String(r.min) : '—'
     const hi = r.max !== undefined ? String(r.max) : '—'
     return `${lo} ~ ${hi}`
@@ -213,16 +218,17 @@ export default function BitFieldTypeModal({
                       </button>
                     </div>
                     <button
-                      className="btn btn-sm"
+                      className={`btn btn-sm${hasRange(bf.name) ? ' btn-primary' : ''}`}
                       style={{
                         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
                         fontSize: 11,
-                        opacity: isMag ? 1 : 0.35,
+                        opacity: isMag ? 1 : 0.3,
                         cursor: isMag ? 'pointer' : 'default',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
-                        maxWidth: '100%',
+                        width: '100%',
+                        textAlign: 'center',
                       }}
                       disabled={!isMag}
                       onClick={() => isMag && openRangePopup(bf)}

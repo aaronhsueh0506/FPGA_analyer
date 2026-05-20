@@ -186,6 +186,7 @@
       "colMin": "Min",
       "colMax": "Max",
       "colRange": "Valid Range",
+      "rangeDefault": "default",
       "rangePopupTitle": "Set Valid Range",
       "clearRange": "Clear Range"
     }

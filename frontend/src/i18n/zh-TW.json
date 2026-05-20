@@ -186,6 +186,7 @@
       "colMin": "最小值",
       "colMax": "最大值",
       "colRange": "有效範圍",
+      "rangeDefault": "預設",
       "rangePopupTitle": "設定有效範圍",
       "clearRange": "清除範圍"
     }

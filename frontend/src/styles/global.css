@@ -719,7 +719,7 @@ ul.simple-list li {
 }
 .modal-list-row {
   display: grid;
-  grid-template-columns: 1.6fr 0.5fr 1.2fr 1.4fr 0.8fr;
+  grid-template-columns: 1.4fr 0.4fr 1fr 1.6fr 88px;
   gap: 12px;
   align-items: center;
   padding: 8px 12px;
