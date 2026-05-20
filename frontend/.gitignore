@@ -3,3 +3,4 @@ dist-ssr
 *.local
 .DS_Store
 .vite
+# dist is committed to git so remote machines without Node.js can run directly
