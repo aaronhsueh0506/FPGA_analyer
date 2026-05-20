@@ -105,7 +105,7 @@ If you want to distribute the tool as a standalone `.exe` so colleagues do not n
 
 4. Run PyInstaller from the `backend` folder:
    ```
-   pyinstaller --onedir --name fpga-analyzer app\main.py ^
+   pyinstaller --onedir --name fpga-analyzer run.py ^
      --distpath "..\release" ^
      --workpath "..\release\build_tmp" ^
      --add-data "app;app" ^
@@ -114,6 +114,8 @@ If you want to distribute the tool as a standalone `.exe` so colleagues do not n
      --hidden-import uvicorn.loops.auto ^
      --hidden-import uvicorn.protocols.http.auto
    ```
+
+   Use `run.py` (not `app\main.py`) as the entry point. `app\main.py` uses relative imports which fail when run directly as `__main__`; `run.py` imports `app.main` as a package so relative imports work correctly.
 
    This leaves `fpga-analyzer.spec` in the `backend\` folder — you can delete it after the build. Do not use `--specpath` to move the spec file elsewhere; it causes PyInstaller to misresolve the `--add-data` source paths.
 
