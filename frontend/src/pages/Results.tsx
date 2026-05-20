@@ -38,6 +38,15 @@ function apiToDetail(api: BatchDetailAPI) {
   return { summary, bitFields, rows, warnings: api.warnings }
 }
 
+function extractCaseId(testCase: string, prefix: string): number | null {
+  const slashIdx = testCase.lastIndexOf('/')
+  const filename = slashIdx !== -1 ? testCase.slice(slashIdx + 1) : testCase
+  if (!prefix) return null
+  const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\d+)`, 'i')
+  const m = filename.match(re)
+  return m ? parseInt(m[1], 10) : null
+}
+
 export default function Results() {
   const { t } = useTranslation()
   const { batchId } = useParams<{ batchId: string }>()
@@ -71,6 +80,14 @@ export default function Results() {
   const [tab, setTab] = useState<Tab>('table')
   const [format, setFormat] = useState<'hex' | 'dec'>('dec')
   const [prefix, setPrefix] = useState('speg')
+
+  const maxCaseId = useMemo(() => {
+    const ids = sortedRows
+      .map(r => extractCaseId(r.testCase, prefix))
+      .filter((id): id is number => id !== null)
+    return ids.length > 0 ? Math.max(...ids) : sortedRows.length
+  }, [sortedRows, prefix])
+
   const [visibleIndices, setVisibleIndices] = useState<number[]>([])
   const [caseFrom, setCaseFrom] = useState<number>(1)
   const [caseTo, setCaseTo] = useState<number>(0)
@@ -82,7 +99,8 @@ export default function Results() {
   // Initialise range and visible columns once data loads
   useEffect(() => {
     if (!detail) return
-    setCaseTo(sortedRows.length)
+    const cids = sortedRows.map(r => extractCaseId(r.testCase, prefix)).filter((id): id is number => id !== null)
+    setCaseTo(cids.length > 0 ? Math.max(...cids) : sortedRows.length)
 
     const saved = visibleColsKey ? localStorage.getItem(visibleColsKey) : null
     if (saved) {
@@ -138,10 +156,13 @@ export default function Results() {
   if (loading) return <div className="page"><div className="empty-state">Loading...</div></div>
   if (error || !detail) return <div className="page"><div className="warning-banner">{error ?? 'Error'}</div></div>
 
-  const clampedFrom = Math.max(1, Math.min(caseFrom, sortedRows.length))
-  const clampedTo = Math.max(clampedFrom, Math.min(caseTo || sortedRows.length, sortedRows.length))
-  const caseRange = { from: clampedFrom, to: clampedTo }
-  const rangedRows = sortedRows.slice(clampedFrom - 1, clampedTo)
+  const effectiveFrom = Math.max(1, caseFrom || 1)
+  const effectiveTo = caseTo || maxCaseId
+  const rangedRows = sortedRows.filter(r => {
+    const id = extractCaseId(r.testCase, prefix)
+    if (id === null) return true
+    return id >= effectiveFrom && id <= effectiveTo
+  })
 
   const showCaseRangeToolbar = tab === 'table' || tab === 'dual' || tab === 'stats' || tab === 'overall'
 
@@ -192,12 +213,12 @@ export default function Results() {
             <input type="number" min={1} max={10000} value={caseTo}
               onChange={(e) => setCaseTo(Number(e.target.value) || sortedRows.length)} />
             <span className="info" style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-              / {sortedRows.length}
+              / {maxCaseId}
             </span>
           </div>
           <div className="divider" />
           <div className="group">
-            <button className="btn btn-sm" onClick={() => { setCaseFrom(1); setCaseTo(sortedRows.length) }}>
+            <button className="btn btn-sm" onClick={() => { setCaseFrom(1); setCaseTo(maxCaseId) }}>
               {t('results.selectAll')}
             </button>
           </div>
@@ -249,20 +270,19 @@ export default function Results() {
 
         {tab === 'stats' && (
           <StatsPanel
-            rows={detail.rows}
+            rows={rangedRows}
             bitFields={detail.bitFields}
             types={types}
-            caseRange={caseRange}
           />
         )}
 
         {tab === 'overall' && (
           <OverallPanel
             summary={detail.summary}
-            rows={detail.rows}
+            rows={rangedRows}
             bitFields={detail.bitFields}
             types={types}
-            caseRange={caseRange}
+            rangeMap={rangeMap}
           />
         )}
 

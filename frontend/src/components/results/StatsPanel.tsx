@@ -11,7 +11,6 @@ interface Props {
   rows: Array<{ testCase: string; values: number[] }>
   bitFields: BitFieldDef[]
   types: TypeMap
-  caseRange: { from: number; to: number }
 }
 
 function computeStats(rawValues: (number | undefined | null)[]) {
@@ -40,7 +39,7 @@ function fmt(n: number | undefined | null): string {
   return (n as number).toFixed(2)
 }
 
-export default function StatsPanel({ rows, bitFields, types, caseRange }: Props) {
+export default function StatsPanel({ rows, bitFields, types }: Props) {
   const { t } = useTranslation()
   const [interpretMap, setInterpretMap] = useState<Record<string, InterpretMode>>({})
   const [detailOpen, setDetailOpen] = useState<Record<string, boolean>>({})
@@ -52,12 +51,6 @@ export default function StatsPanel({ rows, bitFields, types, caseRange }: Props)
   const toggleDetail = (name: string) => {
     setDetailOpen((prev) => ({ ...prev, [name]: !prev[name] }))
   }
-
-  const slicedRows = useMemo(() => {
-    const from = Math.max(0, caseRange.from - 1)
-    const to = Math.min(rows.length, caseRange.to)
-    return rows.slice(from, to)
-  }, [rows, caseRange])
 
   const modeIndices = useMemo(
     () => bitFields.map((bf, i) => ({ bf, i })).filter(({ bf }) => types[bf.name] === 'mode'),
@@ -79,7 +72,7 @@ export default function StatsPanel({ rows, bitFields, types, caseRange }: Props)
         ) : (
           <div className="histogram-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
             {modeIndices.map(({ bf, i }) => {
-              const values = slicedRows.map((r) => r.values[i])
+              const values = rows.map((r) => r.values[i])
               const max = safeMaxValue(bf.width)
               return (
                 <div key={bf.name} className="histogram-card">
@@ -102,7 +95,7 @@ export default function StatsPanel({ rows, bitFields, types, caseRange }: Props)
         ) : (
           <div className="histogram-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
             {magnitudeIndices.map(({ bf, i }) => {
-              const values = slicedRows.map((r) => r.values[i])
+              const values = rows.map((r) => r.values[i])
               const stats = computeStats(values)
               const interpret: InterpretMode = interpretMap[bf.name] || 'int'
               const is32 = bf.width === 32

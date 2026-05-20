@@ -664,6 +664,26 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
   <li>修正 xlrd <code>sheet_visibility</code> 屬性應以 list index 存取。</li>
 </ul>
 
+<h3>Phase 29 (v0.29) — Case Range 改為 ID 過濾 + Overall 參考上限調整</h3>
+<ul>
+  <li><strong>Case Range ID 過濾</strong>：原本 from/to 以陣列 slice（位置）篩選，遇到非連續 ID（如 speg1, speg3, speg7）時語意不符。現改為以 <code>^{prefix}(\d+)</code> regex 萃取數字 ID，改用 <code>filter(id &gt;= from &amp;&amp; id &lt;= to)</code>；右側「/ N」改為顯示最大 case ID；新增 <code>extractCaseId()</code> helper。</li>
+  <li><strong>StatsPanel / OverallPanel 改接 rangedRows</strong>：原本接收全部 rows + caseRange 再自行 slice；現在直接接收已篩選的 <code>rangedRows</code>，移除 <code>caseRange</code> prop 與 <code>slicedRows</code> useMemo。</li>
+  <li><strong>Overall 參考上限改用使用者設定值</strong>：<code>OverallPanel</code> 新增 <code>rangeMap</code> prop；Magnitude Range 涵蓋率表「理論最大」欄，若 bit field 已設定 max 則顯示 <code>effectiveMax</code> 而非 <code>2^width - 1</code>；涵蓋率分母改用 <code>effectiveMax - effectiveMin</code>。</li>
+</ul>
+
+<h3>Phase 28 (v0.28) — Bit Field 類型設定 Modal UI 調整</h3>
+<ul>
+  <li><strong>列表 grid 修正</strong>：<code>modal-list-row</code> 改為 <code>1.4fr 0.4fr 1fr 1.6fr 88px</code>（五欄），類型 toggle 三按鈕不再被擠壓。</li>
+  <li><strong>有效範圍按鈕風格統一</strong>：沿用 <code>.btn .btn-sm</code>；未設定顯示「預設」（灰色），已設定顯示 <code>min ~ max</code>（深藍 <code>.btn-primary</code>）。</li>
+  <li><strong>設定有效範圍 Popup 排版改善</strong>：Min / Max 改用 grid 二列排版，標籤固定 48px，「清除範圍」靠左，「取消 / 套用」靠右。</li>
+</ul>
+
+<h3>Phase 27 (v0.27) — Bit Field 類型設定 Modal 範圍按鈕化</h3>
+<ul>
+  <li><strong>有效範圍 inline inputs → popup 按鈕</strong>：主列末尾改為小型按鈕，點擊後以 <code>createPortal</code> 彈出 popup 填寫 Min / Max；避免 inline inputs 擠壓類型 toggle。</li>
+  <li><strong>i18n</strong>：新增 <code>colRange</code>、<code>rangeDefault</code>、<code>rangePopupTitle</code>、<code>clearRange</code>。</li>
+</ul>
+
 <h3>Phase 26 (v0.26) — Prefix 修正 + 時區修正 + Bit Field 有效範圍設定</h3>
 <ul>
   <li><strong>Prefix 大小寫不分 + 資料夾上傳相容</strong>：<code>extractCaseNumber()</code> 加 <code>i</code> flag（case-insensitive），修正資料夾上傳（<code>folder/speg1.dat</code>）時誤回傳資料夾名的問題，現在取出 <code>/</code> 後的檔名再套 prefix regex。</li>

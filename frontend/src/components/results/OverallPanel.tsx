@@ -1,14 +1,14 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BatchSummary, BitFieldDef } from '../../mock/data'
-import type { TypeMap } from '../../hooks/useBitFieldTypes'
+import type { TypeMap, RangeMap } from '../../hooks/useBitFieldTypes'
 
 interface Props {
   summary: BatchSummary
   rows: Array<{ testCase: string; values: number[] }>
   bitFields: BitFieldDef[]
   types: TypeMap
-  caseRange: { from: number; to: number }
+  rangeMap: RangeMap
 }
 
 const MIN_FIELDS = 2
@@ -20,14 +20,8 @@ function computeTheoreticalMax(width: number): number {
   return (1 << width) - 1
 }
 
-export default function OverallPanel({ summary, rows, bitFields, types, caseRange }: Props) {
+export default function OverallPanel({ summary, rows, bitFields, types, rangeMap }: Props) {
   const { t } = useTranslation()
-
-  const slicedRows = useMemo(() => {
-    const from = Math.max(0, caseRange.from - 1)
-    const to = Math.min(rows.length, caseRange.to)
-    return rows.slice(from, to)
-  }, [rows, caseRange])
 
   const typeCounts = useMemo(() => {
     let mode = 0
@@ -57,11 +51,15 @@ export default function OverallPanel({ summary, rows, bitFields, types, caseRang
       const bf = bitFields[i]
       if (types[bf.name] !== 'magnitude') continue
       const theoreticalMax = computeTheoreticalMax(bf.width)
-      if (slicedRows.length === 0) {
+      const userMax = rangeMap[bf.name]?.max
+      const userMin = rangeMap[bf.name]?.min
+      const effectiveMax = userMax !== undefined ? userMax : theoreticalMax
+      const effectiveMin = userMin !== undefined ? userMin : 0
+      if (rows.length === 0) {
         out.push({
           name: bf.name,
           width: bf.width,
-          theoreticalMax,
+          theoreticalMax: effectiveMax,
           actualMin: 0,
           actualMax: 0,
           uniqueCount: 0,
@@ -72,7 +70,7 @@ export default function OverallPanel({ summary, rows, bitFields, types, caseRang
       let mn = Infinity
       let mx = -Infinity
       const uniq = new Set<number>()
-      for (const r of slicedRows) {
+      for (const r of rows) {
         const v = r.values[i]
         if (v < mn) mn = v
         if (v > mx) mx = v
@@ -80,12 +78,12 @@ export default function OverallPanel({ summary, rows, bitFields, types, caseRang
       }
       const actualMin = mn === Infinity ? 0 : mn
       const actualMax = mx === -Infinity ? 0 : mx
-      const pctNum =
-        theoreticalMax > 0 ? ((actualMax - actualMin) / theoreticalMax) * 100 : 0
+      const refRange = effectiveMax - effectiveMin
+      const pctNum = refRange > 0 ? ((actualMax - actualMin) / refRange) * 100 : 0
       out.push({
         name: bf.name,
         width: bf.width,
-        theoreticalMax,
+        theoreticalMax: effectiveMax,
         actualMin,
         actualMax,
         uniqueCount: uniq.size,
@@ -93,7 +91,7 @@ export default function OverallPanel({ summary, rows, bitFields, types, caseRang
       })
     }
     return out
-  }, [bitFields, types, slicedRows])
+  }, [bitFields, types, rows, rangeMap])
 
   const comboKey = `fpga-combo-picked-v2-${summary.registerName}`
 
@@ -147,7 +145,7 @@ export default function OverallPanel({ summary, rows, bitFields, types, caseRang
   const comboResult = useMemo(() => {
     if (pickedFields.length < MIN_FIELDS) return null
     const counts = new Map<string, number>()
-    for (const r of slicedRows) {
+    for (const r of rows) {
       const key = pickedFields.map((i) => r.values[i]).join('|')
       counts.set(key, (counts.get(key) || 0) + 1)
     }
@@ -155,9 +153,9 @@ export default function OverallPanel({ summary, rows, bitFields, types, caseRang
       .map(([k, n]) => ({ key: k, count: n }))
       .sort((a, b) => b.count - a.count)
       .slice(0, TOP_N)
-    const total = slicedRows.length || 1
+    const total = rows.length || 1
     return { items: arr, total }
-  }, [slicedRows, pickedFields])
+  }, [rows, pickedFields])
 
   return (
     <div>
