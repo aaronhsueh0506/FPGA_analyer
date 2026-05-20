@@ -103,18 +103,19 @@ If you want to distribute the tool as a standalone `.exe` so colleagues do not n
 
 3. Before running PyInstaller, the FastAPI application needs to be configured to serve the frontend static files from `frontend/dist/`. Verify that `backend/app/main.py` includes the static file mount (contact the developer if unsure).
 
-4. Run PyInstaller from the `backend` folder (use `%CD%` for `--add-data` so paths resolve from `backend\`, not from the spec file location):
+4. Run PyInstaller from the `backend` folder:
    ```
    pyinstaller --onedir --name fpga-analyzer app\main.py ^
      --distpath "..\release" ^
      --workpath "..\release\build_tmp" ^
-     --specpath "..\release" ^
-     --add-data "%CD%\app;app" ^
-     --add-data "%CD%\..\frontend\dist;frontend\dist" ^
+     --add-data "app;app" ^
+     --add-data "..\frontend\dist;frontend\dist" ^
      --hidden-import uvicorn.logging ^
      --hidden-import uvicorn.loops.auto ^
      --hidden-import uvicorn.protocols.http.auto
    ```
+
+   This leaves `fpga-analyzer.spec` in the `backend\` folder — you can delete it after the build. Do not use `--specpath` to move the spec file elsewhere; it causes PyInstaller to misresolve the `--add-data` source paths.
 
    If `openpyxl` data files are missing at runtime, add `--collect-data openpyxl` to the command.
 
