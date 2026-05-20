@@ -99,12 +99,23 @@ REM ============================================================
 REM Step 3: Check port 8000
 REM ============================================================
 echo [Step 3] Checking port 8000...
+echo [Debug 3.1] TEMP=%TEMP%
+echo [Debug 3.2] About to run netstat...
 netstat -ano 2>nul | findstr ":8000 " | findstr "LISTENING" > "%TEMP%\_fpga_port8000.txt" 2>nul
-for /f "usebackq tokens=5" %%p in ("%TEMP%\_fpga_port8000.txt") do (
-    echo         Port 8000 occupied (PID: %%p). Stopping old process...
-    taskkill /F /PID %%p >nul 2>&1
+echo [Debug 3.3] netstat done.
+echo [Debug 3.4] About to check if temp file exists...
+if exist "%TEMP%\_fpga_port8000.txt" (
+    echo [Debug 3.5] Temp file found. About to enter for loop...
+    for /f "usebackq tokens=5" %%p in ("%TEMP%\_fpga_port8000.txt") do (
+        echo         Port 8000 occupied (PID: %%p). Stopping old process...
+        taskkill /F /PID %%p >nul 2>&1
+    )
+    echo [Debug 3.6] For loop done.
+    del "%TEMP%\_fpga_port8000.txt" >nul 2>&1
+) else (
+    echo [Debug 3.5] Temp file not found (netstat output was empty).
 )
-if exist "%TEMP%\_fpga_port8000.txt" del "%TEMP%\_fpga_port8000.txt" >nul 2>&1
+echo [Debug 3.7] About to timeout...
 timeout /t 1 /nobreak >nul
 echo         Port check done.
 echo.
