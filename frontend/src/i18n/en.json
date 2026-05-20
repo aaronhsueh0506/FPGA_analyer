@@ -184,7 +184,10 @@
       "colRegister": "Register",
       "colType": "Type",
       "colMin": "Min",
-      "colMax": "Max"
+      "colMax": "Max",
+      "colRange": "Valid Range",
+      "rangePopupTitle": "Set Valid Range",
+      "clearRange": "Clear Range"
     }
   },
   "history": {
