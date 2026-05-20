@@ -197,21 +197,24 @@ export default function BitFieldTypeModal({
                     <span style={{ color: 'var(--text-secondary)', fontSize: 12 }} className="mono">
                       {bf.registerName}
                     </span>
-                    <div className="inline-toggle">
+                    <div className="inline-toggle" style={{ display: 'flex', width: '100%' }}>
                       <button
                         className={draft[bf.name] === 'mode' ? 'active' : ''}
+                        style={{ flex: 1 }}
                         onClick={() => setType(bf.name, 'mode')}
                       >
                         {t('results.bitFieldType.mode')}
                       </button>
                       <button
                         className={draft[bf.name] === 'magnitude' ? 'active' : ''}
+                        style={{ flex: 1 }}
                         onClick={() => setType(bf.name, 'magnitude')}
                       >
                         {t('results.bitFieldType.magnitude')}
                       </button>
                       <button
                         className={draft[bf.name] === 'others' ? 'active' : ''}
+                        style={{ flex: 1 }}
                         onClick={() => setType(bf.name, 'others')}
                       >
                         {t('results.bitFieldType.others')}
