@@ -41,9 +41,13 @@ def health():
 
 
 # Serve built frontend — falls back to index.html for SPA routing
-_DIST = os.path.normpath(
-    os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'frontend', 'dist')
-)
+import sys as _sys
+if getattr(_sys, 'frozen', False):
+    _DIST = os.path.join(os.path.dirname(_sys.executable), '_internal', 'frontend', 'dist')
+else:
+    _DIST = os.path.normpath(
+        os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', '..', 'frontend', 'dist')
+    )
 
 if os.path.isdir(_DIST):
     class _SPAFiles(StaticFiles):

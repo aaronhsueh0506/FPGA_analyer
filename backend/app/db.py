@@ -1,9 +1,17 @@
 import os
+import sys
 from pathlib import Path
 from sqlalchemy import create_engine, event
 from sqlalchemy.orm import sessionmaker, DeclarativeBase
 
-DATA_DIR = Path(__file__).parent.parent.parent / "data"
+# PyInstaller frozen: place data/ next to the .exe
+# Normal run: place data/ at project root
+if getattr(sys, 'frozen', False):
+    BASE_DIR = Path(sys.executable).parent
+else:
+    BASE_DIR = Path(__file__).parent.parent.parent
+
+DATA_DIR = BASE_DIR / "data"
 DATA_DIR.mkdir(exist_ok=True)
 (DATA_DIR / "registers").mkdir(exist_ok=True)
 (DATA_DIR / "batches").mkdir(exist_ok=True)
