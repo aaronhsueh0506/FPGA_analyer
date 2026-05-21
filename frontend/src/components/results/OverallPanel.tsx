@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import type { BatchSummary, BitFieldDef } from '../../mock/data'
 import type { TypeMap, RangeMap } from '../../hooks/useBitFieldTypes'
@@ -41,7 +42,11 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
     const out: Array<{
       name: string
       width: number
-      theoreticalMax: number
+      bitMin: number
+      bitMax: number
+      effectiveMin: number
+      effectiveMax: number
+      hasCustomRange: boolean
       actualMin: number
       actualMax: number
       uniqueCount: number
@@ -50,16 +55,22 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
     for (let i = 0; i < bitFields.length; i++) {
       const bf = bitFields[i]
       if (types[bf.name] !== 'magnitude') continue
-      const theoreticalMax = computeTheoreticalMax(bf.width)
+      const bitMax = computeTheoreticalMax(bf.width)
+      const bitMin = 0
       const userMax = rangeMap[bf.name]?.max
       const userMin = rangeMap[bf.name]?.min
-      const effectiveMax = userMax !== undefined ? userMax : theoreticalMax
-      const effectiveMin = userMin !== undefined ? userMin : 0
+      const effectiveMax = userMax !== undefined ? userMax : bitMax
+      const effectiveMin = userMin !== undefined ? userMin : bitMin
+      const hasCustomRange = userMin !== undefined || userMax !== undefined
       if (rows.length === 0) {
         out.push({
           name: bf.name,
           width: bf.width,
-          theoreticalMax: effectiveMax,
+          bitMin,
+          bitMax,
+          effectiveMin,
+          effectiveMax,
+          hasCustomRange,
           actualMin: 0,
           actualMax: 0,
           uniqueCount: 0,
@@ -69,24 +80,29 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
       }
       let mn = Infinity
       let mx = -Infinity
-      const uniq = new Set<number>()
+      const uniqInRange = new Set<number>()
       for (const r of rows) {
         const v = r.values[i]
+        if (typeof v !== 'number') continue
         if (v < mn) mn = v
         if (v > mx) mx = v
-        uniq.add(v)
+        if (v >= effectiveMin && v <= effectiveMax) uniqInRange.add(v)
       }
       const actualMin = mn === Infinity ? 0 : mn
       const actualMax = mx === -Infinity ? 0 : mx
-      const refRange = effectiveMax - effectiveMin
-      const pctNum = refRange > 0 ? ((actualMax - actualMin) / refRange) * 100 : 0
+      const refSpan = effectiveMax - effectiveMin + 1
+      const pctNum = refSpan > 0 ? (uniqInRange.size / refSpan) * 100 : 0
       out.push({
         name: bf.name,
         width: bf.width,
-        theoreticalMax: effectiveMax,
+        bitMin,
+        bitMax,
+        effectiveMin,
+        effectiveMax,
+        hasCustomRange,
         actualMin,
         actualMax,
-        uniqueCount: uniq.size,
+        uniqueCount: uniqInRange.size,
         coveragePct: pctNum.toFixed(2)
       })
     }
@@ -118,6 +134,7 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
 
   const [pickedFields, setPickedFields] = useState<number[]>(initialPicked)
   const [pickerOpen, setPickerOpen] = useState(false)
+  const [allComboOpen, setAllComboOpen] = useState(false)
 
   useEffect(() => {
     const names = pickedFields.map(i => bitFields[i]?.name).filter(Boolean)
@@ -149,12 +166,13 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
       const key = pickedFields.map((i) => r.values[i]).join('|')
       counts.set(key, (counts.get(key) || 0) + 1)
     }
-    const arr = Array.from(counts.entries())
+    const allItems = Array.from(counts.entries())
       .map(([k, n]) => ({ key: k, count: n }))
       .sort((a, b) => b.count - a.count)
-      .slice(0, TOP_N)
     const total = rows.length || 1
-    return { items: arr, total }
+    const topItems = allItems.slice(0, TOP_N)
+    const othersCount = allItems.slice(TOP_N).reduce((s, x) => s + x.count, 0)
+    return { topItems, allItems, total, othersCount }
   }, [rows, pickedFields])
 
   return (
@@ -212,7 +230,7 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
                 <tr>
                   <th>Bit Field</th>
                   <th>{t('results.bitFieldType.colWidth')}</th>
-                  <th>{t('results.overall.colTheoreticalMax')}</th>
+                  <th>{t('results.overall.colRangeInUse')}</th>
                   <th>{t('results.overall.colActualMin')}</th>
                   <th>{t('results.overall.colActualMax')}</th>
                   <th>{t('results.overall.colUniqueCount')}</th>
@@ -224,7 +242,18 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
                   <tr key={row.name}>
                     <td className="mono text-left">{row.name}</td>
                     <td className="mono">{row.width}</td>
-                    <td className="mono">{row.theoreticalMax}</td>
+                    <td className="mono">
+                      {row.hasCustomRange ? (
+                        <>
+                          {row.effectiveMin}~{row.effectiveMax}
+                          <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>
+                            {' '}({row.bitMin}~{row.bitMax})
+                          </span>
+                        </>
+                      ) : (
+                        `${row.bitMin}~${row.bitMax}`
+                      )}
+                    </td>
                     <td className="mono">{row.actualMin}</td>
                     <td className="mono">{row.actualMax}</td>
                     <td className="mono">{row.uniqueCount}</td>
@@ -273,42 +302,117 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
         {pickedFields.length < MIN_FIELDS ? (
           <div className="warning-banner">{t('results.stats.tooFewFields')}</div>
         ) : comboResult ? (
-          <div className="table-scroll" style={{ maxHeight: 'none' }}>
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>#</th>
-                  {pickedFields.map((idx) => (
-                    <th key={idx} className="mono">
-                      {bitFields[idx].name}
-                    </th>
-                  ))}
-                  <th>{t('results.stats.count')}</th>
-                  <th>{t('results.stats.percent')}</th>
-                </tr>
-              </thead>
-              <tbody>
-                {comboResult.items.map((item, ri) => {
-                  const parts = item.key.split('|')
-                  const pct = (item.count / comboResult.total) * 100
-                  return (
-                    <tr key={ri}>
-                      <td className="mono">{ri + 1}</td>
-                      {parts.map((p, pi) => (
-                        <td key={pi} className="mono">
-                          {p}
+          <>
+            <div className="table-scroll" style={{ maxHeight: 'none' }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    {pickedFields.map((idx) => (
+                      <th key={idx} className="mono">
+                        {bitFields[idx].name}
+                      </th>
+                    ))}
+                    <th>{t('results.stats.count')}</th>
+                    <th>{t('results.stats.percent')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comboResult.topItems.map((item, ri) => {
+                    const parts = item.key.split('|')
+                    const pct = (item.count / comboResult.total) * 100
+                    return (
+                      <tr key={ri}>
+                        <td className="mono">{ri + 1}</td>
+                        {parts.map((p, pi) => (
+                          <td key={pi} className="mono">{p}</td>
+                        ))}
+                        <td className="mono">{item.count}</td>
+                        <td className="mono">{pct.toFixed(2)}%</td>
+                      </tr>
+                    )
+                  })}
+                  {comboResult.othersCount > 0 && (
+                    <tr style={{ color: 'var(--text-tertiary)' }}>
+                      <td className="mono">—</td>
+                      {pickedFields.map((_, pi) => (
+                        <td key={pi} className="mono" style={{ fontStyle: 'italic' }}>
+                          {t('results.overall.othersCombo')}
                         </td>
                       ))}
-                      <td className="mono">{item.count}</td>
-                      <td className="mono">{pct.toFixed(2)}%</td>
+                      <td className="mono">{comboResult.othersCount}</td>
+                      <td className="mono">
+                        {((comboResult.othersCount / comboResult.total) * 100).toFixed(2)}%
+                      </td>
                     </tr>
-                  )
-                })}
-              </tbody>
-            </table>
-          </div>
+                  )}
+                </tbody>
+              </table>
+            </div>
+            {comboResult.allItems.length > TOP_N && (
+              <button
+                className="btn btn-sm"
+                style={{ marginTop: 8 }}
+                onClick={() => setAllComboOpen(true)}
+              >
+                {t('results.overall.showAllCombos', { count: comboResult.allItems.length })}
+              </button>
+            )}
+          </>
         ) : null}
       </div>
+
+      {allComboOpen && comboResult && createPortal(
+        <div
+          className="modal-backdrop"
+          onClick={() => setAllComboOpen(false)}
+          onKeyDown={(e) => e.key === 'Escape' && setAllComboOpen(false)}
+        >
+          <div
+            className="modal modal-wide"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxHeight: '80vh', display: 'flex', flexDirection: 'column' }}
+          >
+            <div className="modal-header">
+              <h2 className="modal-title">
+                {t('results.overall.allCombosTitle', { count: comboResult.allItems.length })}
+              </h2>
+              <button className="modal-close" onClick={() => setAllComboOpen(false)}>×</button>
+            </div>
+            <div style={{ overflowY: 'auto', flex: 1 }}>
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>#</th>
+                    {pickedFields.map((idx) => (
+                      <th key={idx} className="mono">{bitFields[idx].name}</th>
+                    ))}
+                    <th>{t('results.stats.count')}</th>
+                    <th>{t('results.stats.percent')}</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comboResult.allItems.map((item, ri) => {
+                    const parts = item.key.split('|')
+                    const pct = (item.count / comboResult.total) * 100
+                    return (
+                      <tr key={ri}>
+                        <td className="mono">{ri + 1}</td>
+                        {parts.map((p, pi) => (
+                          <td key={pi} className="mono">{p}</td>
+                        ))}
+                        <td className="mono">{item.count}</td>
+                        <td className="mono">{pct.toFixed(2)}%</td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>,
+        document.body
+      )}
     </div>
   )
 }

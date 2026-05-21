@@ -159,10 +159,10 @@
       "typeDistribution": "Bit Field 類型分佈",
       "rangeCoverage": "Magnitude Range 涵蓋率",
       "noMagnitude": "目前沒有 magnitude 類 bit field 可分析",
-      "colTheoreticalMax": "理論最大",
+      "colRangeInUse": "理論最大最小",
       "colActualMin": "實際 min",
       "colActualMax": "實際 max",
-      "colUniqueCount": "唯一值數",
+      "colUniqueCount": "不同值個數",
       "colCoveragePct": "涵蓋率 %",
       "combinationTitle": "組合分析 (Top 10)",
       "pickFields": "勾選 2+ 個 bit field 看組合分佈（無上限）",
@@ -170,7 +170,10 @@
       "showPicker": "展開欄位選擇",
       "hidePicker": "折疊欄位選擇",
       "selected": "已選",
-      "analyzedAt": "分析時間"
+      "analyzedAt": "分析時間",
+      "othersCombo": "其他",
+      "showAllCombos": "查看全部 {{count}} 個組合",
+      "allCombosTitle": "所有組合（共 {{count}} 個）"
     },
     "bitFieldType": {
       "title": "Bit Field 類型設定",
@@ -188,7 +191,9 @@
       "colRange": "有效範圍",
       "rangeDefault": "預設",
       "rangePopupTitle": "設定有效範圍",
-      "clearRange": "清除範圍"
+      "clearRange": "清除範圍",
+      "rangeErrorOutOfBounds": "數值需在 0 ~ {{max}} 之間",
+      "rangeErrorMinGtMax": "min 不能大於 max"
     }
   },
   "history": {

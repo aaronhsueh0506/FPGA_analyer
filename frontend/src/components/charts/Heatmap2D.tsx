@@ -2,7 +2,7 @@ import { useEffect, useRef } from 'react'
 import ReactECharts from 'echarts-for-react'
 
 const GRID = { left: 110, right: 65, top: 20, bottom: 100 }
-const QUANT_STEP = 5
+const QUANT_STEP = 1
 
 function quantize(v: number): number {
   return Math.round(v / QUANT_STEP) * QUANT_STEP
@@ -74,12 +74,12 @@ export default function Heatmap2D({
     const xSpacing = uniqueX.length > 1 ? W / (uniqueX.length - 1) : W
     const ySpacing = uniqueY.length > 1 ? H / (uniqueY.length - 1) : H
     const radius = Math.min(
-      Math.max(xSpacing, ySpacing) * 1.5,
-      Math.min(W, H) * 0.3
+      Math.max(xSpacing, ySpacing) * 0.8,
+      Math.min(W, H) * 0.15
     )
 
     container.innerHTML = ''
-    const hm = h337.create({ container, maxOpacity: 0.9, minOpacity: 0, blur: 0.25, radius })
+    const hm = h337.create({ container, maxOpacity: 0.9, minOpacity: 0, blur: 0.15, radius })
     hm.setData({
       max: maxCount,
       data: data.map(([x, y, count]) => ({

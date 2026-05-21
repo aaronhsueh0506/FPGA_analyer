@@ -18,8 +18,15 @@ interface Props {
 
 interface RangePopupState {
   fieldName: string
+  width: number
   min: string
   max: string
+}
+
+function computeBitMax(width: number): number {
+  if (width >= 32) return 0xffffffff
+  if (width <= 0) return 0
+  return (1 << width) - 1
 }
 
 function RangePopup({
@@ -34,6 +41,31 @@ function RangePopup({
   const { t } = useTranslation()
   const [min, setMin] = useState(state.min)
   const [max, setMax] = useState(state.max)
+  const [error, setError] = useState<string | null>(null)
+
+  const bitMax = computeBitMax(state.width)
+
+  const validate = (): string | null => {
+    const minNum = min === '' ? undefined : Number(min)
+    const maxNum = max === '' ? undefined : Number(max)
+    if (minNum !== undefined && (!Number.isInteger(minNum) || minNum < 0 || minNum > bitMax)) {
+      return t('results.bitFieldType.rangeErrorOutOfBounds', { max: bitMax })
+    }
+    if (maxNum !== undefined && (!Number.isInteger(maxNum) || maxNum < 0 || maxNum > bitMax)) {
+      return t('results.bitFieldType.rangeErrorOutOfBounds', { max: bitMax })
+    }
+    if (minNum !== undefined && maxNum !== undefined && minNum > maxNum) {
+      return t('results.bitFieldType.rangeErrorMinGtMax')
+    }
+    return null
+  }
+
+  const handleApply = () => {
+    const err = validate()
+    if (err) { setError(err); return }
+    onApply(state.fieldName, min, max)
+    onClose()
+  }
 
   return createPortal(
     <div className="modal-backdrop" style={{ zIndex: 1100 }} onClick={onClose}>
@@ -45,8 +77,11 @@ function RangePopup({
         <h3 className="modal-title" style={{ marginBottom: 4 }}>
           {t('results.bitFieldType.rangePopupTitle')}
         </h3>
-        <p className="mono" style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 16px' }}>
+        <p className="mono" style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 4px' }}>
           {state.fieldName}
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '0 0 16px' }}>
+          0 ~ {bitMax} ({state.width} bit)
         </p>
         <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr', gap: '10px 8px', alignItems: 'center' }}>
           <span style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'right' }}>
@@ -55,34 +90,40 @@ function RangePopup({
           <input
             type="number"
             autoFocus
+            min={0}
+            max={bitMax}
             style={{ fontSize: 13, padding: '5px 8px', width: '100%' }}
             placeholder="—"
             value={min}
-            onChange={(e) => setMin(e.target.value)}
+            onChange={(e) => { setMin(e.target.value); setError(null) }}
           />
           <span style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'right' }}>
             {t('results.bitFieldType.colMax')}
           </span>
           <input
             type="number"
+            min={0}
+            max={bitMax}
             style={{ fontSize: 13, padding: '5px 8px', width: '100%' }}
             placeholder="—"
             value={max}
-            onChange={(e) => setMax(e.target.value)}
+            onChange={(e) => { setMax(e.target.value); setError(null) }}
           />
         </div>
+        {error && (
+          <div className="warning-banner" style={{ marginTop: 10, padding: '6px 10px', fontSize: 12 }}>
+            {error}
+          </div>
+        )}
         <div className="modal-actions" style={{ marginTop: 20 }}>
-          <button className="btn btn-sm" onClick={() => { setMin(''); setMax('') }}>
+          <button className="btn btn-sm" onClick={() => { setMin(''); setMax(''); setError(null) }}>
             {t('results.bitFieldType.clearRange')}
           </button>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
             <button className="btn btn-sm" onClick={onClose}>
               {t('common.cancel')}
             </button>
-            <button
-              className="btn btn-primary btn-sm"
-              onClick={() => { onApply(state.fieldName, min, max); onClose() }}
-            >
+            <button className="btn btn-primary btn-sm" onClick={handleApply}>
               {t('results.apply')}
             </button>
           </div>
@@ -128,6 +169,7 @@ export default function BitFieldTypeModal({
     const r = draftRanges[bf.name] ?? {}
     setRangePopup({
       fieldName: bf.name,
+      width: bf.width,
       min: r.min !== undefined ? String(r.min) : '',
       max: r.max !== undefined ? String(r.max) : '',
     })
@@ -189,7 +231,7 @@ export default function BitFieldTypeModal({
                 <span>{t('results.bitFieldType.colRange')}</span>
               </div>
               {bitFields.map((bf) => {
-                const isMag = draft[bf.name] === 'magnitude'
+                const canSetRange = draft[bf.name] === 'magnitude' || draft[bf.name] === 'mode'
                 return (
                   <div key={bf.name} className="modal-list-row">
                     <span className="mono">{bf.name}</span>
@@ -225,16 +267,16 @@ export default function BitFieldTypeModal({
                       style={{
                         fontFamily: 'ui-monospace, SFMono-Regular, Menlo, Consolas, monospace',
                         fontSize: 11,
-                        opacity: isMag ? 1 : 0.3,
-                        cursor: isMag ? 'pointer' : 'default',
+                        opacity: canSetRange ? 1 : 0.3,
+                        cursor: canSetRange ? 'pointer' : 'default',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis',
                         width: '100%',
                         textAlign: 'center',
                       }}
-                      disabled={!isMag}
-                      onClick={() => isMag && openRangePopup(bf)}
+                      disabled={!canSetRange}
+                      onClick={() => canSetRange && openRangePopup(bf)}
                     >
                       {rangeLabel(bf.name)}
                     </button>

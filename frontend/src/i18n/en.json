@@ -159,10 +159,10 @@
       "typeDistribution": "Bit Field Type Distribution",
       "rangeCoverage": "Magnitude Range Coverage",
       "noMagnitude": "No magnitude bit fields to analyze",
-      "colTheoreticalMax": "Theoretical Max",
+      "colRangeInUse": "Theoretical Range",
       "colActualMin": "Actual Min",
       "colActualMax": "Actual Max",
-      "colUniqueCount": "Unique Values",
+      "colUniqueCount": "Distinct Values",
       "colCoveragePct": "Coverage %",
       "combinationTitle": "Combination Analysis (Top 10)",
       "pickFields": "Pick 2+ bit fields to see combination distribution (no upper limit)",
@@ -170,7 +170,10 @@
       "showPicker": "Show field picker",
       "hidePicker": "Hide field picker",
       "selected": "selected",
-      "analyzedAt": "Analyzed At"
+      "analyzedAt": "Analyzed At",
+      "othersCombo": "Others",
+      "showAllCombos": "Show all {{count}} combinations",
+      "allCombosTitle": "All Combinations ({{count}} total)"
     },
     "bitFieldType": {
       "title": "Bit Field Type Setting",
@@ -188,7 +191,9 @@
       "colRange": "Valid Range",
       "rangeDefault": "default",
       "rangePopupTitle": "Set Valid Range",
-      "clearRange": "Clear Range"
+      "clearRange": "Clear Range",
+      "rangeErrorOutOfBounds": "Value must be between 0 and {{max}}",
+      "rangeErrorMinGtMax": "min cannot be greater than max"
     }
   },
   "history": {
