@@ -18,7 +18,7 @@ from ..models import (
 from ..services.excel_parser import parse_excel
 from ..services.dat_parser import parse_dat_bytes
 from ..services.analyzer import analyze
-from ..services.reporter import build_dataframe, write_csv, write_xlsx
+from ..services.reporter import write_csv, write_xlsx
 
 router = APIRouter(prefix="/api/batches", tags=["batches"])
 
@@ -102,11 +102,10 @@ async def create_batch(
     batch_dir = DATA_DIR / "batches" / str(batch_record.id)
     batch_dir.mkdir(parents=True, exist_ok=True)
 
-    df = build_dataframe(result.bitfields, result.rows)
     csv_path = batch_dir / "result.csv"
     xlsx_path = batch_dir / "result.xlsx"
-    write_csv(df, csv_path)
-    write_xlsx(df, xlsx_path)
+    write_csv(result.bitfields, result.rows, csv_path)
+    write_xlsx(result.bitfields, result.rows, xlsx_path)
 
     # Save warnings & bitfield meta as JSON for fast re-serving
     meta = {
@@ -146,16 +145,15 @@ def get_batch(batch_id: int, db: Session = Depends(get_db)):
 
     meta = json.loads(meta_path.read_text(encoding="utf-8"))
 
-    import pandas as pd
-    df = pd.read_csv(csv_path)
-
+    import csv as csv_mod
     bitfields = [BitFieldDefSchema(**bf) for bf in meta["bitfields"]]
     bf_names = [bf.name for bf in bitfields]
 
     rows: list[BatchRowSchema] = []
-    for _, row in df.iterrows():
-        values = [None if pd.isna(row[name]) else int(row[name]) for name in bf_names]
-        rows.append(BatchRowSchema(testCase=str(row["TestCase"]), values=values))
+    with open(csv_path, newline="", encoding="utf-8") as f:
+        for row in csv_mod.DictReader(f):
+            values = [None if row[name] == "" else int(row[name]) for name in bf_names]
+            rows.append(BatchRowSchema(testCase=str(row["TestCase"]), values=values))
 
     return BatchDetailOut(
         summary=_batch_to_out(batch),
