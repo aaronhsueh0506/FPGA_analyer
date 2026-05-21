@@ -197,21 +197,41 @@ export const mockBitFields: BitFieldDef[] = [
   { name: 'SPE_CHECKSUM_EN', width: 1, registerName: 'SPE_Checksum_Register', registerAddr: '00E4' }
 ]
 
-/**
- * 預設啟發式：ERR / CHKSUM 視為 others，其餘全部視為 mode。
- * 兼容性：保留舊的「只傳 width」呼叫方式（已棄用，視為 mode）。
- */
+const OTHERS_KEYWORDS = new Set([
+  'ERR', 'CHKSUM', 'CHECKSUM',
+  'DMA', 'CYCLE', 'CHECK', 'SUM',
+  'LSB', 'MSB', 'DRAM', 'ADDR',
+  'INTERRUPT', 'INT',
+])
+
+const MODE_KEYWORDS = new Set(['EN', 'ENABLE', 'MODE'])
+
 export function defaultBitFieldType(bf: BitFieldDef | number): BitFieldType {
   if (typeof bf === 'number') {
     return 'magnitude'
   }
-  const tokens = bf.name.toUpperCase().split('_')
-  if (tokens.some(t => t === 'ERR' || t === 'CHKSUM')) {
+
+  const upper = bf.name.toUpperCase()
+  const tokens = upper.split('_')
+  const regUpper = (bf.registerName ?? '').toUpperCase()
+
+  // Register name 含 INTERRUPT → others
+  if (regUpper.includes('INTERRUPT')) {
     return 'others'
   }
-  if (tokens.some(t => t === 'EN' || t === 'ENABLE' || t === 'MODE')) {
+
+  const hasOthersToken = tokens.some(t => OTHERS_KEYWORDS.has(t))
+  const hasModeToken = tokens.some(t => MODE_KEYWORDS.has(t))
+
+  // EN/ENABLE/MODE 與 others 關鍵字同時出現 → others 優先
+  if (hasOthersToken) {
+    return 'others'
+  }
+
+  if (hasModeToken) {
     return 'mode'
   }
+
   return 'magnitude'
 }
 
