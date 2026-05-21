@@ -74,12 +74,12 @@ export default function Heatmap2D({
     const xSpacing = uniqueX.length > 1 ? W / (uniqueX.length - 1) : W
     const ySpacing = uniqueY.length > 1 ? H / (uniqueY.length - 1) : H
     const radius = Math.min(
-      Math.max(Math.max(xSpacing, ySpacing) * 3, 50),
-      Math.min(W, H) * 0.4
+      Math.max(xSpacing, ySpacing) * 1.2,
+      Math.min(W, H) * 0.08
     )
 
     container.innerHTML = ''
-    const hm = h337.create({ container, maxOpacity: 0.9, minOpacity: 0, blur: 0.75, radius })
+    const hm = h337.create({ container, maxOpacity: 0.9, minOpacity: 0, blur: 0.65, radius })
     hm.setData({
       max: maxCount,
       data: data.map(([x, y, count]) => ({
