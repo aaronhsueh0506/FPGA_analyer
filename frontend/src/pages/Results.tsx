@@ -273,6 +273,7 @@ export default function Results() {
             rows={rangedRows}
             bitFields={detail.bitFields}
             types={types}
+            rangeMap={rangeMap}
           />
         )}
 

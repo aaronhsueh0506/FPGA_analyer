@@ -334,11 +334,9 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
                   })}
                   {comboResult.othersCount > 0 && (
                     <tr style={{ color: 'var(--text-tertiary)' }}>
-                      <td className="mono">—</td>
+                      <td className="mono">{t('results.overall.othersCombo')}</td>
                       {pickedFields.map((_, pi) => (
-                        <td key={pi} className="mono" style={{ fontStyle: 'italic' }}>
-                          {t('results.overall.othersCombo')}
-                        </td>
+                        <td key={pi} className="mono">—</td>
                       ))}
                       <td className="mono">{comboResult.othersCount}</td>
                       <td className="mono">

@@ -1,7 +1,7 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BitFieldDef } from '../../mock/data'
-import type { TypeMap } from '../../hooks/useBitFieldTypes'
+import type { TypeMap, RangeMap } from '../../hooks/useBitFieldTypes'
 import Histogram from '../charts/Histogram'
 import ValueCurve from '../charts/ValueCurve'
 
@@ -11,6 +11,7 @@ interface Props {
   rows: Array<{ testCase: string; values: number[] }>
   bitFields: BitFieldDef[]
   types: TypeMap
+  rangeMap: RangeMap
 }
 
 function computeStats(rawValues: (number | undefined | null)[]) {
@@ -39,7 +40,7 @@ function fmt(n: number | undefined | null): string {
   return (n as number).toFixed(2)
 }
 
-export default function StatsPanel({ rows, bitFields, types }: Props) {
+export default function StatsPanel({ rows, bitFields, types, rangeMap }: Props) {
   const { t } = useTranslation()
   const [interpretMap, setInterpretMap] = useState<Record<string, InterpretMode>>({})
   const [detailOpen, setDetailOpen] = useState<Record<string, boolean>>({})
@@ -72,14 +73,21 @@ export default function StatsPanel({ rows, bitFields, types }: Props) {
         ) : (
           <div className="histogram-grid" style={{ gridTemplateColumns: 'repeat(4, 1fr)' }}>
             {modeIndices.map(({ bf, i }) => {
-              const values = rows.map((r) => r.values[i])
-              const max = safeMaxValue(bf.width)
+              const allValues = rows.map((r) => r.values[i])
+              const r = rangeMap[bf.name]
+              const bitMax = safeMaxValue(bf.width)
+              const effectiveMin = r?.min !== undefined ? r.min : 0
+              const effectiveMax = r?.max !== undefined ? r.max : bitMax
+              const hasRange = r && (r.min !== undefined || r.max !== undefined)
+              const values = hasRange
+                ? allValues.filter((v): v is number => typeof v === 'number' && v >= effectiveMin && v <= effectiveMax)
+                : allValues
               return (
                 <div key={bf.name} className="histogram-card">
                   <div className="histogram-card-title mono">
                     {bf.name} <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>[{bf.width}b]</span>
                   </div>
-                  <Histogram title="" values={values} maxValue={max} />
+                  <Histogram title="" values={values} maxValue={effectiveMax} minValue={effectiveMin} />
                 </div>
               )
             })}
