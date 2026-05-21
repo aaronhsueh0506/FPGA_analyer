@@ -684,6 +684,26 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
   <li><strong>i18n</strong>：新增 <code>colRange</code>、<code>rangeDefault</code>、<code>rangePopupTitle</code>、<code>clearRange</code>。</li>
 </ul>
 
+<h3>Phase 36 (v0.36) — Bit Field 預設分類規則擴充</h3>
+<ul>
+  <li><strong>Register name 含 INTERRUPT → others</strong>（大小寫不分）：不論 bit field 名稱為何，只要所屬 Register name 含 INTERRUPT 一律歸 others。</li>
+  <li><strong>Token 關鍵字擴充</strong>：以 <code>_</code> 分詞後精確比對，新增 <code>DMA</code>、<code>CYCLE</code>、<code>CHECK</code>、<code>SUM</code>、<code>CHECKSUM</code>、<code>LSB</code>、<code>MSB</code>、<code>DRAM</code>、<code>ADDR</code>、<code>INTERRUPT</code>、<code>INT</code> 為 others 關鍵字。</li>
+  <li><strong>EN/MODE 與 others 關鍵字共存 → others 優先</strong>：EN / ENABLE / MODE 只在不含 others token 時才判為 mode，確保如 <code>DMA_EN</code> 這類名稱歸類正確。</li>
+</ul>
+
+<h3>Phase 35 (v0.35) — 熱力圖 radius 修正</h3>
+<ul>
+  <li>真實資料（27 個量化 Y 值，Y 方向像素間距 ~15px）下，Phase 34 公式算出 radius ≈ 99px（為 Y 間距的 6 倍），所有 blob 完全重疊，全圖一片紅。</li>
+  <li>新公式：<code>radius = min(maxSpacing × 1.2, chartHeight × 8%)</code>，約 32px；相鄰 blob 輕微重疊，密集區（如 X=65 垂直帶）顯著比稀疏區更熱。<code>blur</code> 調降至 0.65。</li>
+</ul>
+
+<h3>Phase 34 (v0.34) — 組合分析顯示修正 + Mode 直方圖範圍篩選 + 熱力圖連續分布</h3>
+<ul>
+  <li><strong>組合分析「其他」列</strong>：<code>#</code> 欄改顯示「其他」翻譯文字，各 register 欄改顯示「—」。</li>
+  <li><strong>Mode 直方圖範圍篩選</strong>：<code>StatsPanel</code> 新增 <code>rangeMap</code> prop；mode 類 bit field 若設有自訂範圍，直方圖只顯示 <code>[effectiveMin, effectiveMax]</code> 內的值，X 軸範圍對齊有效範圍。</li>
+  <li><strong>2D 熱力圖連續分布</strong>：<code>blur</code> 提高至 0.75，<code>radius</code> 放大至 <code>max(spacing × 3, 50)</code>（上限 <code>min(W,H) × 40%</code>），使相鄰 blob 大量重疊，趨近氣象預報式連續色塊效果。</li>
+</ul>
+
 <h3>Phase 31 (v0.31) — 未知 Address 警告改為全批次摘要</h3>
 <ul>
   <li><strong>警告去重邏輯修正</strong>：原本 <code>analyzer.py</code> 中 <code>seen_unknown</code> set 在整個 batch 共用，每個未知 address 只記錄第一個遇到的 dat 檔，導致警告看起來像「只有某一個 test case 有問題」，其實所有 dat 都有相同的未知 address。</li>
