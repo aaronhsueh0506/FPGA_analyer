@@ -684,6 +684,14 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
   <li><strong>i18n</strong>：新增 <code>colRange</code>、<code>rangeDefault</code>、<code>rangePopupTitle</code>、<code>clearRange</code>。</li>
 </ul>
 
+<h3>Phase 37 (v0.37) — Test Case ID 改從資料夾名稱取得</h3>
+<ul>
+  <li><strong>問題</strong>：<code>.dat</code> 檔名可能不固定（如儀器自動命名），原先從檔名取 <code>{prefix}{id}</code> 會失敗。</li>
+  <li><strong>資料夾命名約定</strong>：每個 test case 放在 <code>speg1/</code>、<code>speg2/</code> 等以 <code>{prefix}{id}</code> 命名的資料夾內，<code>.dat</code> 檔名任意。</li>
+  <li><strong>前端 <code>extractCaseId()</code>（Results.tsx）</strong>：優先對 immediate parent 資料夾名稱做 <code>^{prefix}(\d+)</code> match；無資料夾結構時 fallback 到檔名，向下相容舊批次資料。</li>
+  <li><strong>前後端其餘邏輯不變</strong>：<code>batches.ts</code> 已保留 <code>webkitRelativePath</code>（如 <code>speg1/adc_out.dat</code>），後端 <code>testCase</code> 欄位存入完整相對路徑，無需調整。</li>
+</ul>
+
 <h3>Phase 36 (v0.36) — Bit Field 預設分類規則擴充</h3>
 <ul>
   <li><strong>Register name 含 INTERRUPT → others</strong>（大小寫不分）：不論 bit field 名稱為何，只要所屬 Register name 含 INTERRUPT 一律歸 others。</li>

@@ -39,10 +39,18 @@ function apiToDetail(api: BatchDetailAPI) {
 }
 
 function extractCaseId(testCase: string, prefix: string): number | null {
-  const slashIdx = testCase.lastIndexOf('/')
-  const filename = slashIdx !== -1 ? testCase.slice(slashIdx + 1) : testCase
   if (!prefix) return null
   const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\d+)`, 'i')
+  const slashIdx = testCase.lastIndexOf('/')
+  if (slashIdx !== -1) {
+    // Primary: immediate parent folder name (e.g. "speg1/xxx.dat" → folder "speg1" → ID 1)
+    const parts = testCase.slice(0, slashIdx).split('/')
+    const folder = parts[parts.length - 1]
+    const mFolder = folder.match(re)
+    if (mFolder) return parseInt(mFolder[1], 10)
+  }
+  // Fallback: filename (files uploaded individually without folder structure)
+  const filename = slashIdx !== -1 ? testCase.slice(slashIdx + 1) : testCase
   const m = filename.match(re)
   return m ? parseInt(m[1], 10) : null
 }
