@@ -103,12 +103,19 @@ export default function StatsPanel({ rows, bitFields, types, rangeMap }: Props) 
         ) : (
           <div className="histogram-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
             {magnitudeIndices.map(({ bf, i }) => {
-              const values = rows.map((r) => r.values[i])
+              const allValues = rows.map((r) => r.values[i])
+              const r = rangeMap[bf.name]
+              const bitMax = safeMaxValue(bf.width)
+              const effectiveMin = r?.min !== undefined ? r.min : 0
+              const effectiveMax = r?.max !== undefined ? r.max : bitMax
+              const hasRange = r && (r.min !== undefined || r.max !== undefined)
+              const values = hasRange
+                ? allValues.filter((v): v is number => typeof v === 'number' && v >= effectiveMin && v <= effectiveMax)
+                : allValues
               const stats = computeStats(values)
-              const interpret: InterpretMode = interpretMap[bf.name] || 'int'
-              const is32 = bf.width === 32
+              const is32 = bf.width === 32 && !hasRange
+              const interpret: InterpretMode = (is32 ? interpretMap[bf.name] : undefined) || 'int'
               const isDetailOpen = !!detailOpen[bf.name]
-              const maxVal = safeMaxValue(bf.width)
               return (
                 <div key={bf.name} className="histogram-card">
                   <div
@@ -141,7 +148,7 @@ export default function StatsPanel({ rows, bitFields, types, rangeMap }: Props) 
                       </button>
                     </span>
                   </div>
-                  <Histogram title="" values={values} maxValue={maxVal} interpretAs={interpret} />
+                  <Histogram title="" values={values} maxValue={effectiveMax} minValue={effectiveMin} interpretAs={interpret} />
                   <div
                     style={{
                       display: 'grid',

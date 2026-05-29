@@ -684,6 +684,13 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
   <li><strong>i18n</strong>：新增 <code>colRange</code>、<code>rangeDefault</code>、<code>rangePopupTitle</code>、<code>clearRange</code>。</li>
 </ul>
 
+<h3>Phase 38 (v0.38) — Magnitude 直方圖套用手動設定的上下限</h3>
+<ul>
+  <li><code>StatsPanel.tsx</code> Magnitude 區塊改為讀取 <code>rangeMap</code>（Bit Field 類型設定 modal 的手動上下限）。</li>
+  <li>若有設定 min/max，直方圖 X 軸改用此範圍並過濾超出值；未設定時行為不變（0 ~ 理論最大值）。</li>
+  <li>與 Mode 欄位既有的 <code>rangeMap</code> 邏輯一致。</li>
+</ul>
+
 <h3>Phase 37 (v0.37) — Test Case ID 改從資料夾名稱取得</h3>
 <ul>
   <li><strong>問題</strong>：<code>.dat</code> 檔名可能不固定（如儀器自動命名），原先從檔名取 <code>{prefix}{id}</code> 會失敗。</li>
