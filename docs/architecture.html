@@ -684,6 +684,19 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
   <li><strong>i18n</strong>：新增 <code>colRange</code>、<code>rangeDefault</code>、<code>rangePopupTitle</code>、<code>clearRange</code>。</li>
 </ul>
 
+<h3>Phase 40 (v0.40) — 結果表格值篩選</h3>
+<ul>
+  <li>表格工具列新增「值篩選」checkbox（預設關閉）；勾選後展開 bit field 下拉與數值輸入框。</li>
+  <li>篩選邏輯 <code>row.values[fieldIdx] === target</code>，與 case range 並行，不互相影響。</li>
+  <li>分頁計數基於篩選後資料；切換欄位或數值時自動 reset 到第 1 頁。</li>
+</ul>
+
+<h3>Phase 39 (v0.39) — TestCase ID 路徑萃取修正</h3>
+<ul>
+  <li><code>extractCaseNumber()</code> 與 <code>extractCaseId()</code> 改用完整路徑掃描：策略 A 找 <code>prefix+數字</code> 元件，策略 B 找 <code>prefix</code> 後接純數字元件。</li>
+  <li>支援 <code>a/speg1/LL0_reg.dat</code>（策略 A）與 <code>a/speg/1/LL0_reg.dat</code>（策略 B）兩種資料夾結構，舊格式 <code>speg1.dat</code> 不受影響。</li>
+</ul>
+
 <h3>Phase 38 (v0.38) — Magnitude 直方圖套用手動設定的上下限</h3>
 <ul>
   <li><code>StatsPanel.tsx</code> Magnitude 區塊改為讀取 <code>rangeMap</code>（Bit Field 類型設定 modal 的手動上下限）。</li>
