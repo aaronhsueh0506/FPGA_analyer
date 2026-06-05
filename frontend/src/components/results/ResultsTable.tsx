@@ -21,14 +21,24 @@ interface Props {
 const ROWS_PER_PAGE_OPTIONS = [10, 50, 100, 500]
 
 function extractCaseNumber(testCase: string, prefix: string): string {
-  // Strip folder path (folder uploads send "folder/speg1.dat")
-  const slashIdx = testCase.lastIndexOf('/')
-  const filename = slashIdx !== -1 ? testCase.slice(slashIdx + 1) : testCase
-  // Apply prefix+number extraction
+  const parts = testCase.split('/')
+  const filename = parts[parts.length - 1]
   if (!prefix) return filename
-  const re = new RegExp(`^${prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(\\d+)`, 'i')
-  const m = filename.match(re)
-  return m ? `#${m[1]}` : filename
+  const esc = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  const re = new RegExp(`^${esc}(\\d+)`, 'i')
+  // Strategy A: any path component matches prefix+number (e.g. "speg1")
+  for (const part of parts) {
+    const m = part.match(re)
+    if (m) return `#${m[1]}`
+  }
+  // Strategy B: component equals prefix exactly, next component is a pure number (e.g. "speg/1/")
+  const reExact = new RegExp(`^${esc}$`, 'i')
+  for (let i = 0; i < parts.length - 1; i++) {
+    if (reExact.test(parts[i]) && /^\d+$/.test(parts[i + 1])) {
+      return `#${parts[i + 1]}`
+    }
+  }
+  return filename
 }
 
 function isOutOfRange(value: number, fieldName: string, types?: Record<string, BitFieldType>, rangeMap?: RangeMap): boolean {
