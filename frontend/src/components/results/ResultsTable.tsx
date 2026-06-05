@@ -60,19 +60,24 @@ export default function ResultsTable({
   const [page, setPage] = useState(1)
   const [gotoInput, setGotoInput] = useState('')
 
+  type FilterCondition = { fieldIdx: number; rawValue: string }
   const [filterEnabled, setFilterEnabled] = useState(false)
-  const [filterFieldIdx, setFilterFieldIdx] = useState<number>(0)
-  const [filterRawValue, setFilterRawValue] = useState('')
+  const [filterConditions, setFilterConditions] = useState<FilterCondition[]>([{ fieldIdx: 0, rawValue: '' }])
+
+  const addCondition = () => setFilterConditions(prev => [...prev, { fieldIdx: 0, rawValue: '' }])
+  const removeCondition = (i: number) => setFilterConditions(prev => prev.filter((_, idx) => idx !== i))
+  const updateCondition = (i: number, patch: Partial<FilterCondition>) =>
+    setFilterConditions(prev => prev.map((c, idx) => idx === i ? { ...c, ...patch } : c))
+
+  const activeConditions = filterConditions.filter(c => c.rawValue !== '' && Number.isFinite(Number(c.rawValue)))
 
   const filteredRows = useMemo(() => {
-    if (!filterEnabled || filterRawValue === '') return rows
-    const target = Number(filterRawValue)
-    if (!Number.isFinite(target)) return rows
-    return rows.filter(r => r.values[filterFieldIdx] === target)
-  }, [rows, filterEnabled, filterFieldIdx, filterRawValue])
+    if (!filterEnabled || activeConditions.length === 0) return rows
+    return rows.filter(r => activeConditions.every(c => r.values[c.fieldIdx] === Number(c.rawValue)))
+  }, [rows, filterEnabled, filterConditions]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Reset page when filter changes
-  useMemo(() => { setPage(1) }, [filterEnabled, filterFieldIdx, filterRawValue]) // eslint-disable-line react-hooks/exhaustive-deps
+  useMemo(() => { setPage(1) }, [filterEnabled, filterConditions]) // eslint-disable-line react-hooks/exhaustive-deps
 
   const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage))
   const currentPage = Math.min(page, totalPages)
@@ -126,27 +131,12 @@ export default function ResultsTable({
               style={{ marginRight: 4 }}
             />
             {t('results.valueFilter')}
+            {filterEnabled && activeConditions.length > 0 && (
+              <span style={{ marginLeft: 4, color: 'var(--color-primary, #1f3a8a)', fontWeight: 600 }}>
+                ({activeConditions.length})
+              </span>
+            )}
           </label>
-          {filterEnabled && (
-            <>
-              <select
-                value={filterFieldIdx}
-                onChange={e => setFilterFieldIdx(Number(e.target.value))}
-              >
-                {bitFields.map((bf, idx) => (
-                  <option key={idx} value={idx}>{bf.name}</option>
-                ))}
-              </select>
-              <span style={{ color: 'var(--text-tertiary)', fontWeight: 600 }}>=</span>
-              <input
-                type="number"
-                style={{ width: 80 }}
-                value={filterRawValue}
-                onChange={e => setFilterRawValue(e.target.value)}
-                placeholder="0"
-              />
-            </>
-          )}
         </div>
         <div className="divider" />
         <div className="group">
@@ -173,6 +163,42 @@ export default function ResultsTable({
           </div>
         </div>
       </div>
+
+      {filterEnabled && (
+        <div style={{ padding: '8px 0', display: 'flex', flexDirection: 'column', gap: 6 }}>
+          {filterConditions.map((cond, i) => (
+            <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <select
+                value={cond.fieldIdx}
+                onChange={e => updateCondition(i, { fieldIdx: Number(e.target.value) })}
+              >
+                {bitFields.map((bf, idx) => (
+                  <option key={idx} value={idx}>{bf.name}</option>
+                ))}
+              </select>
+              <span style={{ color: 'var(--text-tertiary)', fontWeight: 600 }}>=</span>
+              <input
+                type="number"
+                style={{ width: 90 }}
+                value={cond.rawValue}
+                onChange={e => updateCondition(i, { rawValue: e.target.value })}
+                placeholder="0"
+              />
+              {filterConditions.length > 1 && (
+                <button className="btn btn-sm" onClick={() => removeCondition(i)}
+                  style={{ padding: '2px 8px', lineHeight: 1 }}>
+                  ×
+                </button>
+              )}
+            </div>
+          ))}
+          <div>
+            <button className="btn btn-sm" onClick={addCondition}>
+              {t('results.valueFilterAdd')}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="table-scroll">
         {visibleIndices.length === 0 ? (

@@ -119,6 +119,7 @@
     "next": "下一頁",
     "valueFilter": "值篩選",
     "valueFilterOff": "關閉",
+    "valueFilterAdd": "+ 新增條件",
     "columnSelector": "欄位顯示",
     "selectAll": "全選",
     "clearSelection": "清除",
