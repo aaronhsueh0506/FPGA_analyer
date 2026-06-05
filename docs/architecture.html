@@ -684,6 +684,13 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
   <li><strong>i18n</strong>：新增 <code>colRange</code>、<code>rangeDefault</code>、<code>rangePopupTitle</code>、<code>clearRange</code>。</li>
 </ul>
 
+<h3>Phase 41 (v0.41) — 值篩選支援多條件 AND</h3>
+<ul>
+  <li>值篩選從單一條件升級為多條件並行（AND 邏輯）；條件清單顯示於工具列下方。</li>
+  <li><code>+ 新增條件</code> 按鈕可加任意數量條件；所有填值且合法的條件同時成立（<code>active.every(...)</code>）。</li>
+  <li>checkbox 旁顯示 <code>(N)</code> 表示目前有效條件數。</li>
+</ul>
+
 <h3>Phase 40 (v0.40) — 結果表格值篩選</h3>
 <ul>
   <li>表格工具列新增「值篩選」checkbox（預設關閉）；勾選後展開 bit field 下拉與數值輸入框。</li>
