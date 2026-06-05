@@ -117,6 +117,8 @@
     "gotoPage": "跳至",
     "prev": "上一頁",
     "next": "下一頁",
+    "valueFilter": "值篩選",
+    "valueFilterOff": "關閉",
     "columnSelector": "欄位顯示",
     "selectAll": "全選",
     "clearSelection": "清除",

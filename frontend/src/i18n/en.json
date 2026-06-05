@@ -117,6 +117,8 @@
     "gotoPage": "Go to",
     "prev": "Prev",
     "next": "Next",
+    "valueFilter": "Value Filter",
+    "valueFilterOff": "Off",
     "columnSelector": "Columns",
     "selectAll": "Select all",
     "clearSelection": "Clear",

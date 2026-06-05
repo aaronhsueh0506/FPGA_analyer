@@ -60,12 +60,26 @@ export default function ResultsTable({
   const [page, setPage] = useState(1)
   const [gotoInput, setGotoInput] = useState('')
 
-  const totalPages = Math.max(1, Math.ceil(rows.length / rowsPerPage))
+  const [filterEnabled, setFilterEnabled] = useState(false)
+  const [filterFieldIdx, setFilterFieldIdx] = useState<number>(0)
+  const [filterRawValue, setFilterRawValue] = useState('')
+
+  const filteredRows = useMemo(() => {
+    if (!filterEnabled || filterRawValue === '') return rows
+    const target = Number(filterRawValue)
+    if (!Number.isFinite(target)) return rows
+    return rows.filter(r => r.values[filterFieldIdx] === target)
+  }, [rows, filterEnabled, filterFieldIdx, filterRawValue])
+
+  // Reset page when filter changes
+  useMemo(() => { setPage(1) }, [filterEnabled, filterFieldIdx, filterRawValue]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  const totalPages = Math.max(1, Math.ceil(filteredRows.length / rowsPerPage))
   const currentPage = Math.min(page, totalPages)
   const startIdx = (currentPage - 1) * rowsPerPage
   const visibleRows = useMemo(
-    () => rows.slice(startIdx, startIdx + rowsPerPage),
-    [rows, startIdx, rowsPerPage]
+    () => filteredRows.slice(startIdx, startIdx + rowsPerPage),
+    [filteredRows, startIdx, rowsPerPage]
   )
 
   const formatValue = (v: number) =>
@@ -101,6 +115,38 @@ export default function ResultsTable({
           <button className="btn btn-sm" onClick={onOpenColumnSelector}>
             {t('results.columnSelector')} ({visibleIndices.length}/{bitFields.length})
           </button>
+        </div>
+        <div className="divider" />
+        <div className="group">
+          <label style={{ userSelect: 'none', cursor: 'pointer' }}>
+            <input
+              type="checkbox"
+              checked={filterEnabled}
+              onChange={e => setFilterEnabled(e.target.checked)}
+              style={{ marginRight: 4 }}
+            />
+            {t('results.valueFilter')}
+          </label>
+          {filterEnabled && (
+            <>
+              <select
+                value={filterFieldIdx}
+                onChange={e => setFilterFieldIdx(Number(e.target.value))}
+              >
+                {bitFields.map((bf, idx) => (
+                  <option key={idx} value={idx}>{bf.name}</option>
+                ))}
+              </select>
+              <span style={{ color: 'var(--text-tertiary)', fontWeight: 600 }}>=</span>
+              <input
+                type="number"
+                style={{ width: 80 }}
+                value={filterRawValue}
+                onChange={e => setFilterRawValue(e.target.value)}
+                placeholder="0"
+              />
+            </>
+          )}
         </div>
         <div className="divider" />
         <div className="group">
