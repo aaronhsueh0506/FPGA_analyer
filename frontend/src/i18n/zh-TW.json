@@ -201,6 +201,7 @@
       "clearRange": "清除範圍",
       "rangeErrorOutOfBounds": "數值需在 0 ~ {{max}} 之間",
       "rangeErrorMinGtMax": "min 不能大於 max",
+      "segmentEnable": "啟用片段範圍",
       "segmentPopupTitle": "設定片段範圍",
       "segmentLabel": "合法片段",
       "segmentPlaceholder": "例如 0-2, 5, 7-9",

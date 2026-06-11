@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import type { BitFieldDef, BitFieldType } from '../../mock/data'
 import { defaultBitFieldType } from '../../mock/data'
-import type { TypeMap, RangeMap } from '../../hooks/useBitFieldTypes'
+import type { TypeMap, RangeMap, FieldRange } from '../../hooks/useBitFieldTypes'
 import { parseSegments } from '../../hooks/useBitFieldTypes'
 
 interface Props {
@@ -24,9 +24,11 @@ interface RangePopupState {
   max: string
 }
 
-interface SegmentPopupState {
+interface ModeRangePopupState {
   fieldName: string
   width: number
+  min: string
+  max: string
   segments: string
 }
 
@@ -141,22 +143,38 @@ function RangePopup({
   )
 }
 
-function SegmentPopup({
+function ModeRangePopup({
   state,
   onApply,
   onClose,
 }: {
-  state: SegmentPopupState
-  onApply: (name: string, segments: string, parsed: [number, number][]) => void
+  state: ModeRangePopupState
+  onApply: (name: string, range: FieldRange) => void
   onClose: () => void
 }) {
   const { t } = useTranslation()
-  const [input, setInput] = useState(state.segments)
-  const [error, setError] = useState<string | null>(null)
+  const [min, setMin] = useState(state.min)
+  const [max, setMax] = useState(state.max)
+  const [segmentEnabled, setSegmentEnabled] = useState(state.segments !== '')
+  const [segInput, setSegInput] = useState(state.segments)
+  const [minMaxError, setMinMaxError] = useState<string | null>(null)
+  const [segError, setSegError] = useState<string | null>(null)
 
   const bitMax = computeBitMax(state.width)
 
-  const validate = (raw: string): string | null => {
+  const validateMinMax = (): string | null => {
+    const minNum = min === '' ? undefined : Number(min)
+    const maxNum = max === '' ? undefined : Number(max)
+    if (minNum !== undefined && (!Number.isInteger(minNum) || minNum < 0 || minNum > bitMax))
+      return t('results.bitFieldType.rangeErrorOutOfBounds', { max: bitMax })
+    if (maxNum !== undefined && (!Number.isInteger(maxNum) || maxNum < 0 || maxNum > bitMax))
+      return t('results.bitFieldType.rangeErrorOutOfBounds', { max: bitMax })
+    if (minNum !== undefined && maxNum !== undefined && minNum > maxNum)
+      return t('results.bitFieldType.rangeErrorMinGtMax')
+    return null
+  }
+
+  const validateSeg = (raw: string): string | null => {
     if (raw.trim() === '') return null
     const { error: err } = parseSegments(raw, bitMax)
     if (!err) return null
@@ -170,33 +188,46 @@ function SegmentPopup({
     return t('results.bitFieldType.segmentErrorFormat')
   }
 
-  const handleChange = (v: string) => {
-    setInput(v)
-    setError(validate(v))
+  const handleApply = () => {
+    if (segmentEnabled) {
+      const err = validateSeg(segInput)
+      if (err) { setSegError(err); return }
+      if (segInput.trim() === '') {
+        onApply(state.fieldName, {})
+      } else {
+        const { parsed } = parseSegments(segInput, bitMax)
+        onApply(state.fieldName, { segments: segInput.trim(), parsedSegments: parsed })
+      }
+    } else {
+      const err = validateMinMax()
+      if (err) { setMinMaxError(err); return }
+      const minNum = min === '' ? undefined : Number(min)
+      const maxNum = max === '' ? undefined : Number(max)
+      onApply(state.fieldName, { min: minNum, max: maxNum })
+    }
+    onClose()
   }
 
-  const handleApply = () => {
-    if (input.trim() === '') {
-      onApply(state.fieldName, '', [])
-      onClose()
-      return
-    }
-    const err = validate(input)
-    if (err) { setError(err); return }
-    const { parsed } = parseSegments(input, bitMax)
-    onApply(state.fieldName, input.trim(), parsed)
-    onClose()
+  const handleClear = () => {
+    setMin(''); setMax(''); setSegInput('')
+    setMinMaxError(null); setSegError(null)
+  }
+
+  const handleToggleSegment = (checked: boolean) => {
+    setSegmentEnabled(checked)
+    setMinMaxError(null)
+    setSegError(null)
   }
 
   return createPortal(
     <div className="modal-backdrop" style={{ zIndex: 1100 }} onClick={onClose}>
       <div
         className="modal"
-        style={{ maxWidth: 380, width: '90%' }}
+        style={{ maxWidth: 360, width: '90%' }}
         onClick={(e) => e.stopPropagation()}
       >
         <h3 className="modal-title" style={{ marginBottom: 4 }}>
-          {t('results.bitFieldType.segmentPopupTitle')}
+          {t('results.bitFieldType.rangePopupTitle')}
         </h3>
         <p className="mono" style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 4px' }}>
           {state.fieldName}
@@ -204,33 +235,93 @@ function SegmentPopup({
         <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '0 0 16px' }}>
           0 ~ {bitMax} ({state.width} bit)
         </p>
-        <div style={{ marginBottom: 8 }}>
-          <span style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
-            {t('results.bitFieldType.segmentLabel')}
+        <div style={{
+          display: 'grid',
+          gridTemplateColumns: '48px 1fr',
+          gap: '10px 8px',
+          alignItems: 'center',
+          opacity: segmentEnabled ? 0.4 : 1,
+          pointerEvents: segmentEnabled ? 'none' : 'auto',
+        }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'right' }}>
+            {t('results.bitFieldType.colMin')}
           </span>
           <input
-            type="text"
-            autoFocus
-            style={{ fontSize: 13, padding: '6px 8px', width: '100%' }}
-            placeholder={t('results.bitFieldType.segmentPlaceholder')}
-            value={input}
-            onChange={(e) => handleChange(e.target.value)}
+            type="number"
+            autoFocus={!segmentEnabled}
+            min={0}
+            max={bitMax}
+            disabled={segmentEnabled}
+            style={{ fontSize: 13, padding: '5px 8px', width: '100%' }}
+            placeholder="—"
+            value={min}
+            onChange={(e) => { setMin(e.target.value); setMinMaxError(null) }}
+          />
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'right' }}>
+            {t('results.bitFieldType.colMax')}
+          </span>
+          <input
+            type="number"
+            min={0}
+            max={bitMax}
+            disabled={segmentEnabled}
+            style={{ fontSize: 13, padding: '5px 8px', width: '100%' }}
+            placeholder="—"
+            value={max}
+            onChange={(e) => { setMax(e.target.value); setMinMaxError(null) }}
           />
         </div>
-        {error && (
-          <div className="warning-banner" style={{ marginTop: 6, padding: '6px 10px', fontSize: 12 }}>
-            {error}
+        {minMaxError && !segmentEnabled && (
+          <div className="warning-banner" style={{ marginTop: 10, padding: '6px 10px', fontSize: 12 }}>
+            {minMaxError}
+          </div>
+        )}
+        <label style={{
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8,
+          marginTop: 16,
+          cursor: 'pointer',
+          fontSize: 13,
+          userSelect: 'none',
+        }}>
+          <input
+            type="checkbox"
+            checked={segmentEnabled}
+            onChange={(e) => handleToggleSegment(e.target.checked)}
+          />
+          {t('results.bitFieldType.segmentEnable')}
+        </label>
+        {segmentEnabled && (
+          <div style={{ marginTop: 10 }}>
+            <input
+              type="text"
+              autoFocus
+              style={{ fontSize: 13, padding: '6px 8px', width: '100%' }}
+              placeholder={t('results.bitFieldType.segmentPlaceholder')}
+              value={segInput}
+              onChange={(e) => { setSegInput(e.target.value); setSegError(validateSeg(e.target.value)) }}
+            />
+            {segError && (
+              <div className="warning-banner" style={{ marginTop: 6, padding: '6px 10px', fontSize: 12 }}>
+                {segError}
+              </div>
+            )}
           </div>
         )}
         <div className="modal-actions" style={{ marginTop: 20 }}>
-          <button className="btn btn-sm" onClick={() => { setInput(''); setError(null) }}>
+          <button className="btn btn-sm" onClick={handleClear}>
             {t('results.bitFieldType.clearRange')}
           </button>
           <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
             <button className="btn btn-sm" onClick={onClose}>
               {t('common.cancel')}
             </button>
-            <button className="btn btn-primary btn-sm" onClick={handleApply} disabled={!!error}>
+            <button
+              className="btn btn-primary btn-sm"
+              onClick={handleApply}
+              disabled={segmentEnabled ? !!segError : !!minMaxError}
+            >
               {t('results.apply')}
             </button>
           </div>
@@ -248,14 +339,14 @@ export default function BitFieldTypeModal({
   const [draft, setDraft] = useState<TypeMap>(types)
   const [draftRanges, setDraftRanges] = useState<RangeMap>(rangeMap)
   const [rangePopup, setRangePopup] = useState<RangePopupState | null>(null)
-  const [segmentPopup, setSegmentPopup] = useState<SegmentPopupState | null>(null)
+  const [modeRangePopup, setModeRangePopup] = useState<ModeRangePopupState | null>(null)
 
   useEffect(() => {
     if (open) {
       setDraft(types)
       setDraftRanges(rangeMap)
       setRangePopup(null)
-      setSegmentPopup(null)
+      setModeRangePopup(null)
     }
   }, [open, types, rangeMap])
 
@@ -274,17 +365,20 @@ export default function BitFieldTypeModal({
     }))
   }
 
-  const applySegmentParts = (name: string, segments: string, parsed: [number, number][]) => {
-    setDraftRanges((prev) => ({
-      ...prev,
-      [name]: segments === '' ? {} : { segments, parsedSegments: parsed }
-    }))
+  const applyModeRange = (name: string, range: FieldRange) => {
+    setDraftRanges((prev) => ({ ...prev, [name]: range }))
   }
 
   const openRangePopup = (bf: BitFieldDef) => {
     if (draft[bf.name] === 'mode') {
       const r = draftRanges[bf.name] ?? {}
-      setSegmentPopup({ fieldName: bf.name, width: bf.width, segments: r.segments ?? '' })
+      setModeRangePopup({
+        fieldName: bf.name,
+        width: bf.width,
+        min: r.min !== undefined ? String(r.min) : '',
+        max: r.max !== undefined ? String(r.max) : '',
+        segments: r.segments ?? '',
+      })
     } else {
       const r = draftRanges[bf.name] ?? {}
       setRangePopup({
@@ -427,11 +521,11 @@ export default function BitFieldTypeModal({
           onClose={() => setRangePopup(null)}
         />
       )}
-      {segmentPopup && (
-        <SegmentPopup
-          state={segmentPopup}
-          onApply={applySegmentParts}
-          onClose={() => setSegmentPopup(null)}
+      {modeRangePopup && (
+        <ModeRangePopup
+          state={modeRangePopup}
+          onApply={applyModeRange}
+          onClose={() => setModeRangePopup(null)}
         />
       )}
     </>,

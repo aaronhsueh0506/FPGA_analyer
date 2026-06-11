@@ -83,16 +83,22 @@ export default function StatsPanel({ rows, bitFields, types, rangeMap }: Props) 
                 : allValues
               let effectiveMin = r?.min !== undefined ? r.min : 0
               let effectiveMax = r?.max !== undefined ? r.max : bitMax
+              let allowedValues: number[] | undefined
               if (r?.parsedSegments && r.parsedSegments.length > 0) {
                 effectiveMin = r.parsedSegments[0][0]
                 effectiveMax = r.parsedSegments[r.parsedSegments.length - 1][1]
+                if (effectiveMax <= 20) {
+                  allowedValues = r.parsedSegments.flatMap(([lo, hi]) =>
+                    Array.from({ length: hi - lo + 1 }, (_, j) => lo + j)
+                  )
+                }
               }
               return (
                 <div key={bf.name} className="histogram-card">
                   <div className="histogram-card-title mono">
                     {bf.name} <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>[{bf.width}b]</span>
                   </div>
-                  <Histogram title="" values={values} maxValue={effectiveMax} minValue={effectiveMin} />
+                  <Histogram title="" values={values} maxValue={effectiveMax} minValue={effectiveMin} allowedValues={allowedValues} />
                 </div>
               )
             })}

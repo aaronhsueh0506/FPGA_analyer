@@ -6,6 +6,7 @@ interface Props {
   maxValue: number
   minValue?: number
   interpretAs?: 'int' | 'fp32'
+  allowedValues?: number[]
 }
 
 const BIN_COUNT = 20
@@ -32,7 +33,7 @@ function formatFloat(f: number): string {
   return f.toExponential(2)
 }
 
-export default function Histogram({ title, values, maxValue: rawMaxValue, minValue = 0, interpretAs = 'int' }: Props) {
+export default function Histogram({ title, values, maxValue: rawMaxValue, minValue = 0, interpretAs = 'int', allowedValues }: Props) {
   const maxValue = safeMax(rawMaxValue)
   if (values.length === 0) {
     return (
@@ -83,15 +84,25 @@ export default function Histogram({ title, values, maxValue: rawMaxValue, minVal
       }
     }
   } else if (maxValue <= 20) {
-    const size = maxValue + 1
-    counts = new Array(size).fill(0)
-    labels = []
-    for (let i = 0; i < size; i++) {
-      labels.push(String(i))
-    }
-    for (const v of values) {
-      const idx = Math.max(0, Math.min(size - 1, v))
-      counts[idx]++
+    if (allowedValues && allowedValues.length > 0) {
+      const posIndex = new Map(allowedValues.map((v, i) => [v, i]))
+      counts = new Array(allowedValues.length).fill(0)
+      labels = allowedValues.map(String)
+      for (const v of values) {
+        const idx = posIndex.get(v)
+        if (idx !== undefined) counts[idx]++
+      }
+    } else {
+      const size = maxValue + 1
+      counts = new Array(size).fill(0)
+      labels = []
+      for (let i = 0; i < size; i++) {
+        labels.push(String(i))
+      }
+      for (const v of values) {
+        const idx = Math.max(0, Math.min(size - 1, v))
+        counts[idx]++
+      }
     }
   } else {
     counts = new Array(BIN_COUNT).fill(0)
