@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BitFieldDef } from '../../mock/data'
 import type { TypeMap, RangeMap } from '../../hooks/useBitFieldTypes'
+import { isValueInRange } from '../../hooks/useBitFieldTypes'
 import Histogram from '../charts/Histogram'
 import ValueCurve from '../charts/ValueCurve'
 
@@ -76,12 +77,16 @@ export default function StatsPanel({ rows, bitFields, types, rangeMap }: Props) 
               const allValues = rows.map((r) => r.values[i])
               const r = rangeMap[bf.name]
               const bitMax = safeMaxValue(bf.width)
-              const effectiveMin = r?.min !== undefined ? r.min : 0
-              const effectiveMax = r?.max !== undefined ? r.max : bitMax
-              const hasRange = r && (r.min !== undefined || r.max !== undefined)
+              const hasRange = r && (r.min !== undefined || r.max !== undefined || (r.parsedSegments && r.parsedSegments.length > 0))
               const values = hasRange
-                ? allValues.filter((v): v is number => typeof v === 'number' && v >= effectiveMin && v <= effectiveMax)
+                ? allValues.filter((v): v is number => typeof v === 'number' && isValueInRange(v, r))
                 : allValues
+              let effectiveMin = r?.min !== undefined ? r.min : 0
+              let effectiveMax = r?.max !== undefined ? r.max : bitMax
+              if (r?.parsedSegments && r.parsedSegments.length > 0) {
+                effectiveMin = r.parsedSegments[0][0]
+                effectiveMax = r.parsedSegments[r.parsedSegments.length - 1][1]
+              }
               return (
                 <div key={bf.name} className="histogram-card">
                   <div className="histogram-card-title mono">
@@ -110,7 +115,7 @@ export default function StatsPanel({ rows, bitFields, types, rangeMap }: Props) 
               const effectiveMax = r?.max !== undefined ? r.max : bitMax
               const hasRange = r && (r.min !== undefined || r.max !== undefined)
               const values = hasRange
-                ? allValues.filter((v): v is number => typeof v === 'number' && v >= effectiveMin && v <= effectiveMax)
+                ? allValues.filter((v): v is number => typeof v === 'number' && isValueInRange(v, r))
                 : allValues
               const stats = computeStats(values)
               const is32 = bf.width === 32 && !hasRange

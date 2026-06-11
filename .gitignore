@@ -27,3 +27,6 @@ frontend/node_modules/
 # Sample data files (not for version control)
 *.xlsx
 *.dat
+
+# Local planning / notes
+FPGA流程驗證方案.md

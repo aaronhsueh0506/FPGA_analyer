@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import type { BitFieldDef, BitFieldType } from '../../mock/data'
 import { defaultBitFieldType } from '../../mock/data'
 import type { TypeMap, RangeMap } from '../../hooks/useBitFieldTypes'
+import { parseSegments } from '../../hooks/useBitFieldTypes'
 
 interface Props {
   open: boolean
@@ -21,6 +22,12 @@ interface RangePopupState {
   width: number
   min: string
   max: string
+}
+
+interface SegmentPopupState {
+  fieldName: string
+  width: number
+  segments: string
 }
 
 function computeBitMax(width: number): number {
@@ -134,6 +141,106 @@ function RangePopup({
   )
 }
 
+function SegmentPopup({
+  state,
+  onApply,
+  onClose,
+}: {
+  state: SegmentPopupState
+  onApply: (name: string, segments: string, parsed: [number, number][]) => void
+  onClose: () => void
+}) {
+  const { t } = useTranslation()
+  const [input, setInput] = useState(state.segments)
+  const [error, setError] = useState<string | null>(null)
+
+  const bitMax = computeBitMax(state.width)
+
+  const validate = (raw: string): string | null => {
+    if (raw.trim() === '') return null
+    const { error: err } = parseSegments(raw, bitMax)
+    if (!err) return null
+    if (err.startsWith('format:')) return t('results.bitFieldType.segmentErrorFormat')
+    if (err.startsWith('bounds:')) {
+      const parts = err.split(':')
+      return t('results.bitFieldType.segmentErrorOutOfBounds', { val: parts[1], max: parts[2] })
+    }
+    if (err.startsWith('order:')) return t('results.bitFieldType.segmentErrorOrder')
+    if (err === 'overlap') return t('results.bitFieldType.segmentErrorOverlap')
+    return t('results.bitFieldType.segmentErrorFormat')
+  }
+
+  const handleChange = (v: string) => {
+    setInput(v)
+    setError(validate(v))
+  }
+
+  const handleApply = () => {
+    if (input.trim() === '') {
+      onApply(state.fieldName, '', [])
+      onClose()
+      return
+    }
+    const err = validate(input)
+    if (err) { setError(err); return }
+    const { parsed } = parseSegments(input, bitMax)
+    onApply(state.fieldName, input.trim(), parsed)
+    onClose()
+  }
+
+  return createPortal(
+    <div className="modal-backdrop" style={{ zIndex: 1100 }} onClick={onClose}>
+      <div
+        className="modal"
+        style={{ maxWidth: 380, width: '90%' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <h3 className="modal-title" style={{ marginBottom: 4 }}>
+          {t('results.bitFieldType.segmentPopupTitle')}
+        </h3>
+        <p className="mono" style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 4px' }}>
+          {state.fieldName}
+        </p>
+        <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '0 0 16px' }}>
+          0 ~ {bitMax} ({state.width} bit)
+        </p>
+        <div style={{ marginBottom: 8 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)', display: 'block', marginBottom: 6 }}>
+            {t('results.bitFieldType.segmentLabel')}
+          </span>
+          <input
+            type="text"
+            autoFocus
+            style={{ fontSize: 13, padding: '6px 8px', width: '100%' }}
+            placeholder={t('results.bitFieldType.segmentPlaceholder')}
+            value={input}
+            onChange={(e) => handleChange(e.target.value)}
+          />
+        </div>
+        {error && (
+          <div className="warning-banner" style={{ marginTop: 6, padding: '6px 10px', fontSize: 12 }}>
+            {error}
+          </div>
+        )}
+        <div className="modal-actions" style={{ marginTop: 20 }}>
+          <button className="btn btn-sm" onClick={() => { setInput(''); setError(null) }}>
+            {t('results.bitFieldType.clearRange')}
+          </button>
+          <div style={{ marginLeft: 'auto', display: 'flex', gap: 8 }}>
+            <button className="btn btn-sm" onClick={onClose}>
+              {t('common.cancel')}
+            </button>
+            <button className="btn btn-primary btn-sm" onClick={handleApply} disabled={!!error}>
+              {t('results.apply')}
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>,
+    document.body
+  )
+}
+
 export default function BitFieldTypeModal({
   open, onClose, bitFields, types, onApply, onApplyRanges, rangeMap, onReset
 }: Props) {
@@ -141,12 +248,14 @@ export default function BitFieldTypeModal({
   const [draft, setDraft] = useState<TypeMap>(types)
   const [draftRanges, setDraftRanges] = useState<RangeMap>(rangeMap)
   const [rangePopup, setRangePopup] = useState<RangePopupState | null>(null)
+  const [segmentPopup, setSegmentPopup] = useState<SegmentPopupState | null>(null)
 
   useEffect(() => {
     if (open) {
       setDraft(types)
       setDraftRanges(rangeMap)
       setRangePopup(null)
+      setSegmentPopup(null)
     }
   }, [open, types, rangeMap])
 
@@ -165,14 +274,26 @@ export default function BitFieldTypeModal({
     }))
   }
 
+  const applySegmentParts = (name: string, segments: string, parsed: [number, number][]) => {
+    setDraftRanges((prev) => ({
+      ...prev,
+      [name]: segments === '' ? {} : { segments, parsedSegments: parsed }
+    }))
+  }
+
   const openRangePopup = (bf: BitFieldDef) => {
-    const r = draftRanges[bf.name] ?? {}
-    setRangePopup({
-      fieldName: bf.name,
-      width: bf.width,
-      min: r.min !== undefined ? String(r.min) : '',
-      max: r.max !== undefined ? String(r.max) : '',
-    })
+    if (draft[bf.name] === 'mode') {
+      const r = draftRanges[bf.name] ?? {}
+      setSegmentPopup({ fieldName: bf.name, width: bf.width, segments: r.segments ?? '' })
+    } else {
+      const r = draftRanges[bf.name] ?? {}
+      setRangePopup({
+        fieldName: bf.name,
+        width: bf.width,
+        min: r.min !== undefined ? String(r.min) : '',
+        max: r.max !== undefined ? String(r.max) : '',
+      })
+    }
   }
 
   const apply = () => {
@@ -190,12 +311,15 @@ export default function BitFieldTypeModal({
 
   const hasRange = (name: string) => {
     const r = draftRanges[name]
-    return r && (r.min !== undefined || r.max !== undefined)
+    if (!r) return false
+    return r.min !== undefined || r.max !== undefined || (r.parsedSegments && r.parsedSegments.length > 0)
   }
 
   const rangeLabel = (name: string) => {
     const r = draftRanges[name]
-    if (!r || (r.min === undefined && r.max === undefined)) return t('results.bitFieldType.rangeDefault')
+    if (!r) return t('results.bitFieldType.rangeDefault')
+    if (r.parsedSegments && r.parsedSegments.length > 0) return r.segments ?? 'seg'
+    if (r.min === undefined && r.max === undefined) return t('results.bitFieldType.rangeDefault')
     const lo = r.min !== undefined ? String(r.min) : '—'
     const hi = r.max !== undefined ? String(r.max) : '—'
     return `${lo} ~ ${hi}`
@@ -301,6 +425,13 @@ export default function BitFieldTypeModal({
           state={rangePopup}
           onApply={applyRangeParts}
           onClose={() => setRangePopup(null)}
+        />
+      )}
+      {segmentPopup && (
+        <SegmentPopup
+          state={segmentPopup}
+          onApply={applySegmentParts}
+          onClose={() => setSegmentPopup(null)}
         />
       )}
     </>,

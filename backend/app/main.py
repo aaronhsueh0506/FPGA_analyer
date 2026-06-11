@@ -15,7 +15,7 @@ from .api import registers, batches
 # Create all tables on startup
 Base.metadata.create_all(bind=engine)
 
-app = FastAPI(title="FPGA Register Analyzer API", version="0.1.0")
+app = FastAPI(title="FPGA Register Analyzer API", version="0.42.0")
 
 app.add_middleware(
     CORSMiddleware,
@@ -32,7 +32,7 @@ app.include_router(batches.router)
 
 @app.get("/api/version", response_model=VersionOut)
 def get_version():
-    return VersionOut(version="v0.1.0", build_date="2026-05-19", author="Aaron Hsueh")
+    return VersionOut(version="v0.42.0", build_date="2026-06-11", author="Aaron Hsueh")
 
 
 @app.get("/api/health")

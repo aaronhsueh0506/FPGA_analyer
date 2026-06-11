@@ -1,6 +1,13 @@
-# FPGA Register Analyzer
+# FPGA Register Analyzer — v0.42.0
 
 A local web tool for analyzing FPGA test case results.
+
+## Changelog
+
+- **v0.42.0** (2026-06-11): Mode bit fields now support segment-style valid range (e.g. `0-2, 5, 7-9`) with format/bounds/overlap validation. Coverage and combination analysis update to use the customized valid space. Histogram filtering also respects segment ranges.
+- **v0.41.0**: Value filter supports multiple AND conditions.
+- **v0.40.0**: Added value filter to results table (default off).
+- **v0.39.0**: Extract test case ID from parent folder name.
 
 Given a register definition Excel file and a set of `.dat` files produced by each test run, the tool parses and decodes each bit field, aligns values across all test cases into a table, and provides statistical views including histograms, scatter plots, and combination frequency analysis. Results can be exported as CSV or Excel.
 
@@ -112,7 +119,8 @@ If you want to distribute the tool as a standalone `.exe` so colleagues do not n
      --add-data "..\frontend\dist;frontend\dist" ^
      --hidden-import uvicorn.logging ^
      --hidden-import uvicorn.loops.auto ^
-     --hidden-import uvicorn.protocols.http.auto
+     --hidden-import uvicorn.protocols.http.auto ^
+     --icon " ..\icon.ico"
    ```
 
    Use `run.py` (not `app\main.py`) as the entry point. `app\main.py` uses relative imports which fail when run directly as `__main__`; `run.py` imports `app.main` as a package so relative imports work correctly.

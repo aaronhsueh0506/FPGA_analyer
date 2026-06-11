@@ -3,6 +3,7 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import type { BatchSummary, BitFieldDef } from '../../mock/data'
 import type { TypeMap, RangeMap } from '../../hooks/useBitFieldTypes'
+import { validValueCount, isValueInRange } from '../../hooks/useBitFieldTypes'
 
 interface Props {
   summary: BatchSummary
@@ -86,11 +87,11 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
         if (typeof v !== 'number') continue
         if (v < mn) mn = v
         if (v > mx) mx = v
-        if (v >= effectiveMin && v <= effectiveMax) uniqInRange.add(v)
+        if (isValueInRange(v, rangeMap[bf.name])) uniqInRange.add(v)
       }
       const actualMin = mn === Infinity ? 0 : mn
       const actualMax = mx === -Infinity ? 0 : mx
-      const refSpan = effectiveMax - effectiveMin + 1
+      const refSpan = validValueCount(rangeMap[bf.name], bf.width)
       const pctNum = refSpan > 0 ? (uniqInRange.size / refSpan) * 100 : 0
       out.push({
         name: bf.name,
@@ -104,6 +105,39 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
         actualMax,
         uniqueCount: uniqInRange.size,
         coveragePct: pctNum.toFixed(2)
+      })
+    }
+    return out
+  }, [bitFields, types, rows, rangeMap])
+
+  const modeSegmentRows = useMemo(() => {
+    const out: Array<{
+      name: string
+      width: number
+      segments: string
+      validCount: number
+      uniqueCount: number
+      coveragePct: string
+    }> = []
+    for (let i = 0; i < bitFields.length; i++) {
+      const bf = bitFields[i]
+      if (types[bf.name] !== 'mode') continue
+      const r = rangeMap[bf.name]
+      if (!r?.parsedSegments || r.parsedSegments.length === 0) continue
+      const validCount = validValueCount(r, bf.width)
+      const uniq = new Set<number>()
+      for (const row of rows) {
+        const v = row.values[i]
+        if (typeof v === 'number' && isValueInRange(v, r)) uniq.add(v)
+      }
+      const pct = validCount > 0 ? (uniq.size / validCount) * 100 : 0
+      out.push({
+        name: bf.name,
+        width: bf.width,
+        segments: r.segments ?? '',
+        validCount,
+        uniqueCount: uniq.size,
+        coveragePct: pct.toFixed(2),
       })
     }
     return out
@@ -161,19 +195,27 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
 
   const comboResult = useMemo(() => {
     if (pickedFields.length < MIN_FIELDS) return null
+    const hasAnyRange = pickedFields.some(i => {
+      const r = rangeMap[bitFields[i]?.name]
+      return r && (r.min !== undefined || r.max !== undefined || (r.parsedSegments && r.parsedSegments.length > 0))
+    })
+    const validRows = hasAnyRange
+      ? rows.filter(r => pickedFields.every(i => isValueInRange(r.values[i], rangeMap[bitFields[i]?.name])))
+      : rows
+    const excludedCount = rows.length - validRows.length
     const counts = new Map<string, number>()
-    for (const r of rows) {
+    for (const r of validRows) {
       const key = pickedFields.map((i) => r.values[i]).join('|')
       counts.set(key, (counts.get(key) || 0) + 1)
     }
     const allItems = Array.from(counts.entries())
       .map(([k, n]) => ({ key: k, count: n }))
       .sort((a, b) => b.count - a.count)
-    const total = rows.length || 1
+    const total = validRows.length || 1
     const topItems = allItems.slice(0, TOP_N)
     const othersCount = allItems.slice(TOP_N).reduce((s, x) => s + x.count, 0)
-    return { topItems, allItems, total, othersCount }
-  }, [rows, pickedFields])
+    return { topItems, allItems, total, othersCount, excludedCount }
+  }, [rows, pickedFields, rangeMap, bitFields])
 
   return (
     <div>
@@ -266,10 +308,50 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
         )}
       </div>
 
+      {/* Section 3b — Mode segment coverage */}
+      {modeSegmentRows.length > 0 && (
+        <div className="card">
+          <h3 className="card-title">{t('results.overall.modeSegmentCoverage')}</h3>
+          <div className="table-scroll" style={{ maxHeight: 'none' }}>
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Bit Field</th>
+                  <th>{t('results.bitFieldType.colWidth')}</th>
+                  <th>{t('results.overall.colSegments')}</th>
+                  <th>{t('results.overall.colValidCount')}</th>
+                  <th>{t('results.overall.colUniqueCount')}</th>
+                  <th>{t('results.overall.colCoveragePct')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {modeSegmentRows.map((row) => (
+                  <tr key={row.name}>
+                    <td className="mono text-left">{row.name}</td>
+                    <td className="mono">{row.width}</td>
+                    <td className="mono">{row.segments}</td>
+                    <td className="mono">{row.validCount}</td>
+                    <td className="mono">{row.uniqueCount}</td>
+                    <td className="mono">{row.coveragePct}%</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
       {/* Section 4 — Combination analysis (Top-10) */}
       <div className="card">
         <h3 className="card-title">{t('results.overall.combinationTitle')}</h3>
-        <p className="card-subtitle">{t('results.overall.pickFields')}</p>
+        <p className="card-subtitle">
+          {t('results.overall.pickFields')}
+          {comboResult && comboResult.excludedCount > 0 && (
+            <span style={{ marginLeft: 8, color: 'var(--warning)', fontSize: 12 }}>
+              {t('results.overall.comboExcluded', { count: comboResult.excludedCount })}
+            </span>
+          )}
+        </p>
         <button
           className="btn btn-sm"
           style={{ marginBottom: 8 }}

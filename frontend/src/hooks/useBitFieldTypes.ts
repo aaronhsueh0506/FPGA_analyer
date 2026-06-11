@@ -6,8 +6,67 @@ const STORAGE_PREFIX = 'fpga-bit-field-types-'
 const RANGE_STORAGE_PREFIX = 'fpga-bit-field-ranges-'
 
 export type TypeMap = Record<string, BitFieldType>
-export interface FieldRange { min?: number; max?: number }
+export interface FieldRange {
+  min?: number
+  max?: number
+  segments?: string
+  parsedSegments?: [number, number][]
+}
 export type RangeMap = Record<string, FieldRange>
+
+export function parseSegments(
+  input: string,
+  maxVal: number
+): { parsed: [number, number][]; error?: string } {
+  const parts = input.split(',').map((s) => s.trim()).filter(Boolean)
+  if (parts.length === 0) return { parsed: [] }
+  const result: [number, number][] = []
+  for (const part of parts) {
+    const rangeMatch = part.match(/^(\d+)-(\d+)$/)
+    const singleMatch = part.match(/^(\d+)$/)
+    if (rangeMatch) {
+      const lo = parseInt(rangeMatch[1], 10)
+      const hi = parseInt(rangeMatch[2], 10)
+      if (lo > hi) return { parsed: [], error: `order:${part}` }
+      if (hi > maxVal) return { parsed: [], error: `bounds:${hi}:${maxVal}` }
+      result.push([lo, hi])
+    } else if (singleMatch) {
+      const v = parseInt(singleMatch[1], 10)
+      if (v > maxVal) return { parsed: [], error: `bounds:${v}:${maxVal}` }
+      result.push([v, v])
+    } else {
+      return { parsed: [], error: `format:${part}` }
+    }
+  }
+  const sorted = [...result].sort((a, b) => a[0] - b[0])
+  for (let i = 1; i < sorted.length; i++) {
+    if (sorted[i][0] <= sorted[i - 1][1]) return { parsed: [], error: 'overlap' }
+  }
+  return { parsed: sorted }
+}
+
+export function isValueInRange(value: number, range: FieldRange | undefined): boolean {
+  if (!range) return true
+  if (range.parsedSegments && range.parsedSegments.length > 0) {
+    return range.parsedSegments.some(([lo, hi]) => value >= lo && value <= hi)
+  }
+  if (range.min !== undefined && value < range.min) return false
+  if (range.max !== undefined && value > range.max) return false
+  return true
+}
+
+export function validValueCount(range: FieldRange | undefined, width: number): number {
+  const bitMax = width >= 32 ? 0xffffffff : (1 << width) - 1
+  if (range?.parsedSegments && range.parsedSegments.length > 0) {
+    return range.parsedSegments.reduce((sum, [lo, hi]) => sum + hi - lo + 1, 0)
+  }
+  if (range?.min !== undefined || range?.max !== undefined) {
+    const lo = range.min ?? 0
+    const hi = range.max ?? bitMax
+    return hi - lo + 1
+  }
+  return bitMax + 1
+}
 
 function loadFromStorage(registerId: number | string): TypeMap | null {
   try {
@@ -81,11 +140,7 @@ export function useBitFieldTypes(registerId: number | string, bitFields: BitFiel
   }
 
   const isOutOfRange = (fieldName: string, value: number): boolean => {
-    const r = rangeMap[fieldName]
-    if (!r) return false
-    if (r.min !== undefined && value < r.min) return true
-    if (r.max !== undefined && value > r.max) return true
-    return false
+    return !isValueInRange(value, rangeMap[fieldName])
   }
 
   const isMode = (name: string) => types[name] === 'mode'

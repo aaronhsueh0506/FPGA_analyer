@@ -167,8 +167,12 @@
       "colActualMax": "實際 max",
       "colUniqueCount": "不同值個數",
       "colCoveragePct": "涵蓋率 %",
+      "modeSegmentCoverage": "Mode 片段涵蓋率",
+      "colSegments": "合法片段",
+      "colValidCount": "有效空間",
       "combinationTitle": "組合分析 (Top 10)",
       "pickFields": "勾選 2+ 個 bit field 看組合分佈（無上限）",
+      "comboExcluded": "（已排除 {{count}} 筆超範圍資料）",
       "pickFieldsHint": "勾選的 bit field 構成「組合鍵」，系統計算這些組合在所有 test case 中的出現次數",
       "showPicker": "展開欄位選擇",
       "hidePicker": "折疊欄位選擇",
@@ -196,7 +200,14 @@
       "rangePopupTitle": "設定有效範圍",
       "clearRange": "清除範圍",
       "rangeErrorOutOfBounds": "數值需在 0 ~ {{max}} 之間",
-      "rangeErrorMinGtMax": "min 不能大於 max"
+      "rangeErrorMinGtMax": "min 不能大於 max",
+      "segmentPopupTitle": "設定片段範圍",
+      "segmentLabel": "合法片段",
+      "segmentPlaceholder": "例如 0-2, 5, 7-9",
+      "segmentErrorFormat": "格式錯誤（使用：a-b 或 c，以逗號分隔）",
+      "segmentErrorOutOfBounds": "數值 {{val}} 超出 bit 寬度（最大 {{max}}）",
+      "segmentErrorOverlap": "片段有重疊",
+      "segmentErrorOrder": "片段起始值不能大於終止值"
     }
   },
   "history": {

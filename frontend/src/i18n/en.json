@@ -167,8 +167,12 @@
       "colActualMax": "Actual Max",
       "colUniqueCount": "Distinct Values",
       "colCoveragePct": "Coverage %",
+      "modeSegmentCoverage": "Mode Segment Coverage",
+      "colSegments": "Valid Segments",
+      "colValidCount": "Valid Space",
       "combinationTitle": "Combination Analysis (Top 10)",
       "pickFields": "Pick 2+ bit fields to see combination distribution (no upper limit)",
+      "comboExcluded": "({{count}} rows excluded as out-of-range)",
       "pickFieldsHint": "Selected bit fields form combination keys; we count occurrences across all test cases",
       "showPicker": "Show field picker",
       "hidePicker": "Hide field picker",
@@ -196,7 +200,14 @@
       "rangePopupTitle": "Set Valid Range",
       "clearRange": "Clear Range",
       "rangeErrorOutOfBounds": "Value must be between 0 and {{max}}",
-      "rangeErrorMinGtMax": "min cannot be greater than max"
+      "rangeErrorMinGtMax": "min cannot be greater than max",
+      "segmentPopupTitle": "Set Segment Range",
+      "segmentLabel": "Valid Segments",
+      "segmentPlaceholder": "e.g. 0-2, 5, 7-9",
+      "segmentErrorFormat": "Invalid format (use: a-b or c, comma-separated)",
+      "segmentErrorOutOfBounds": "Value {{val}} exceeds bit width (max {{max}})",
+      "segmentErrorOverlap": "Overlapping segments detected",
+      "segmentErrorOrder": "Segment start must be <= end"
     }
   },
   "history": {
