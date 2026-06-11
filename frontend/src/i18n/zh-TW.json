@@ -208,7 +208,8 @@
       "segmentErrorFormat": "格式錯誤（使用：a-b 或 c，以逗號分隔）",
       "segmentErrorOutOfBounds": "數值 {{val}} 超出 bit 寬度（最大 {{max}}）",
       "segmentErrorOverlap": "片段有重疊",
-      "segmentErrorOrder": "片段起始值不能大於終止值"
+      "segmentErrorOrder": "片段起始值不能大於終止值",
+      "segmentErrorOutsideRange": "片段值必須在 {{min}}~{{max}} 範圍內"
     }
   },
   "history": {

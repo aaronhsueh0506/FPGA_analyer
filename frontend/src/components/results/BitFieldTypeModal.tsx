@@ -174,35 +174,48 @@ function ModeRangePopup({
     return null
   }
 
-  const validateSeg = (raw: string): string | null => {
+  const validateSeg = (raw: string, currentMin = min, currentMax = max): string | null => {
     if (raw.trim() === '') return null
-    const { error: err } = parseSegments(raw, bitMax)
-    if (!err) return null
-    if (err.startsWith('format:')) return t('results.bitFieldType.segmentErrorFormat')
-    if (err.startsWith('bounds:')) {
-      const parts = err.split(':')
-      return t('results.bitFieldType.segmentErrorOutOfBounds', { val: parts[1], max: parts[2] })
+    const { error: err, parsed } = parseSegments(raw, bitMax)
+    if (err) {
+      if (err.startsWith('format:')) return t('results.bitFieldType.segmentErrorFormat')
+      if (err.startsWith('bounds:')) {
+        const parts = err.split(':')
+        return t('results.bitFieldType.segmentErrorOutOfBounds', { val: parts[1], max: parts[2] })
+      }
+      if (err.startsWith('order:')) return t('results.bitFieldType.segmentErrorOrder')
+      if (err === 'overlap') return t('results.bitFieldType.segmentErrorOverlap')
+      return t('results.bitFieldType.segmentErrorFormat')
     }
-    if (err.startsWith('order:')) return t('results.bitFieldType.segmentErrorOrder')
-    if (err === 'overlap') return t('results.bitFieldType.segmentErrorOverlap')
-    return t('results.bitFieldType.segmentErrorFormat')
+    const minNum = currentMin === '' ? undefined : Number(currentMin)
+    const maxNum = currentMax === '' ? undefined : Number(currentMax)
+    if (minNum !== undefined || maxNum !== undefined) {
+      const lo = minNum ?? 0
+      const hi = maxNum ?? bitMax
+      for (const [segLo, segHi] of parsed) {
+        if (segLo < lo || segHi > hi) {
+          return t('results.bitFieldType.segmentErrorOutsideRange', { min: lo, max: hi })
+        }
+      }
+    }
+    return null
   }
 
   const handleApply = () => {
+    const mmErr = validateMinMax()
+    if (mmErr) { setMinMaxError(mmErr); return }
+    const minNum = min === '' ? undefined : Number(min)
+    const maxNum = max === '' ? undefined : Number(max)
     if (segmentEnabled) {
       const err = validateSeg(segInput)
       if (err) { setSegError(err); return }
       if (segInput.trim() === '') {
-        onApply(state.fieldName, {})
+        onApply(state.fieldName, { min: minNum, max: maxNum })
       } else {
         const { parsed } = parseSegments(segInput, bitMax)
-        onApply(state.fieldName, { segments: segInput.trim(), parsedSegments: parsed })
+        onApply(state.fieldName, { min: minNum, max: maxNum, segments: segInput.trim(), parsedSegments: parsed })
       }
     } else {
-      const err = validateMinMax()
-      if (err) { setMinMaxError(err); return }
-      const minNum = min === '' ? undefined : Number(min)
-      const maxNum = max === '' ? undefined : Number(max)
       onApply(state.fieldName, { min: minNum, max: maxNum })
     }
     onClose()
@@ -240,22 +253,23 @@ function ModeRangePopup({
           gridTemplateColumns: '48px 1fr',
           gap: '10px 8px',
           alignItems: 'center',
-          opacity: segmentEnabled ? 0.4 : 1,
-          pointerEvents: segmentEnabled ? 'none' : 'auto',
         }}>
           <span style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'right' }}>
             {t('results.bitFieldType.colMin')}
           </span>
           <input
             type="number"
-            autoFocus={!segmentEnabled}
+            autoFocus
             min={0}
             max={bitMax}
-            disabled={segmentEnabled}
             style={{ fontSize: 13, padding: '5px 8px', width: '100%' }}
             placeholder="—"
             value={min}
-            onChange={(e) => { setMin(e.target.value); setMinMaxError(null) }}
+            onChange={(e) => {
+              setMin(e.target.value)
+              setMinMaxError(null)
+              if (segmentEnabled) setSegError(validateSeg(segInput, e.target.value, max))
+            }}
           />
           <span style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'right' }}>
             {t('results.bitFieldType.colMax')}
@@ -264,11 +278,14 @@ function ModeRangePopup({
             type="number"
             min={0}
             max={bitMax}
-            disabled={segmentEnabled}
             style={{ fontSize: 13, padding: '5px 8px', width: '100%' }}
             placeholder="—"
             value={max}
-            onChange={(e) => { setMax(e.target.value); setMinMaxError(null) }}
+            onChange={(e) => {
+              setMax(e.target.value)
+              setMinMaxError(null)
+              if (segmentEnabled) setSegError(validateSeg(segInput, min, e.target.value))
+            }}
           />
         </div>
         {minMaxError && !segmentEnabled && (
@@ -300,7 +317,7 @@ function ModeRangePopup({
               style={{ fontSize: 13, padding: '6px 8px', width: '100%' }}
               placeholder={t('results.bitFieldType.segmentPlaceholder')}
               value={segInput}
-              onChange={(e) => { setSegInput(e.target.value); setSegError(validateSeg(e.target.value)) }}
+              onChange={(e) => { setSegInput(e.target.value); setSegError(validateSeg(e.target.value, min, max)) }}
             />
             {segError && (
               <div className="warning-banner" style={{ marginTop: 6, padding: '6px 10px', fontSize: 12 }}>

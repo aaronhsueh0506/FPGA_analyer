@@ -208,7 +208,8 @@
       "segmentErrorFormat": "Invalid format (use: a-b or c, comma-separated)",
       "segmentErrorOutOfBounds": "Value {{val}} exceeds bit width (max {{max}})",
       "segmentErrorOverlap": "Overlapping segments detected",
-      "segmentErrorOrder": "Segment start must be <= end"
+      "segmentErrorOrder": "Segment start must be <= end",
+      "segmentErrorOutsideRange": "Segment values must be within {{min}}~{{max}}"
     }
   },
   "history": {
