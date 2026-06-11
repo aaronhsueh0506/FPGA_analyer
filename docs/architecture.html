@@ -150,7 +150,7 @@
 
 <header class="doc-header">
   <h1>FPGA Register Analyzer — 系統架構文件</h1>
-  <div class="meta">版本：v0.31.0　|　日期：2026-05-20　|　開發者：Aaron Hsueh</div>
+  <div class="meta">版本：v0.42.0　|　日期：2026-06-11　|　開發者：Aaron Hsueh</div>
 </header>
 
 <div class="toc">
@@ -684,6 +684,16 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
   <li><strong>i18n</strong>：新增 <code>colRange</code>、<code>rangeDefault</code>、<code>rangePopupTitle</code>、<code>clearRange</code>。</li>
 </ul>
 
+<h3>Phase 42 (v0.42) — Mode Bit Field 片段有效範圍</h3>
+<ul>
+  <li><strong><code>FieldRange</code> 型別擴充</strong>：<code>useBitFieldTypes.ts</code> 新增 <code>segments?: string</code>（原始輸入字串）與 <code>parsedSegments?: [number, number][]</code>（解析後排序非重疊區段）；新增 <code>parseSegments()</code>、<code>isValueInRange()</code>、<code>validValueCount()</code> 三個匯出函式供多元件共用。</li>
+  <li><strong><code>ModeRangePopup</code>（替換 <code>SegmentPopup</code>）</strong>：mode 類 bit field 的有效範圍 popup 統一為：上方 min/max 輸入框，下方「啟用片段範圍」勾選框展開 segment 文字輸入；兩者同時可填，segment 值須落在 min/max 區間內，不符合時即時報錯；儲存時同時寫入 <code>{ min, max, segments, parsedSegments }</code>。</li>
+  <li><strong>驗證邏輯</strong>：<code>parseSegments()</code> 驗證格式（<code>a-b</code> 或 <code>c</code> 以逗號分隔）、數值不超出 bit 寬度、區段 start ≤ end、無重疊；若有 min/max，另外驗證每個 segment 值都在 <code>[min, max]</code> 範圍內；min/max 改變時 segment 驗證即時重算。</li>
+  <li><strong>Overall Panel 更新</strong>：magnitude 涵蓋率分母改用 <code>validValueCount(range, width)</code>；mode 欄位若有 <code>parsedSegments</code>，新增「Mode Segment Coverage」表格（合法片段、有效空間、不同值個數、涵蓋率）；組合分析只計算所有選取欄位值均通過 <code>isValueInRange</code> 的 row，並顯示排除筆數。</li>
+  <li><strong>Histogram 直方圖更新</strong>：<code>Histogram.tsx</code> 新增 <code>allowedValues?: number[]</code> prop；mode 欄位有 <code>parsedSegments</code> 且 maxValue ≤ 20 時，只建立合法位置的 bar，不出現空 bar 佔位；所有直方圖改用 <code>isValueInRange</code> 過濾值。</li>
+</ul>
+<p><strong>主要改動檔案</strong>：<code>useBitFieldTypes.ts</code>、<code>BitFieldTypeModal.tsx</code>、<code>OverallPanel.tsx</code>、<code>StatsPanel.tsx</code>、<code>Histogram.tsx</code>、<code>en.json</code> / <code>zh-TW.json</code>。</p>
+
 <h3>Phase 41 (v0.41) — 值篩選支援多條件 AND</h3>
 <ul>
   <li>值篩選從單一條件升級為多條件並行（AND 邏輯）；條件清單顯示於工具列下方。</li>
@@ -793,7 +803,7 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
 </blockquote>
 
 <footer>
-  FPGA Register Analyzer　|　v0.24.0　|　Aaron Hsueh　|　2026-05-19
+  FPGA Register Analyzer　|　v0.42.0　|　Aaron Hsueh　|　2026-06-11
 </footer>
 
 </body>

@@ -4,7 +4,7 @@ A local web tool for analyzing FPGA test case results.
 
 ## Changelog
 
-- **v0.42.0** (2026-06-11): Mode bit fields now support segment-style valid range (e.g. `0-2, 5, 7-9`) with format/bounds/overlap validation. Coverage and combination analysis update to use the customized valid space. Histogram filtering also respects segment ranges.
+- **v0.42.0** (2026-06-11): Mode bit fields support segment-style valid range (`0-2, 5, 7-9`). Range popup shows min/max first; an optional checkbox enables segment input constrained within min/max. Coverage and combination analysis use the customized valid space. Histogram hides gap bars outside segment ranges.
 - **v0.41.0**: Value filter supports multiple AND conditions.
 - **v0.40.0**: Added value filter to results table (default off).
 - **v0.39.0**: Extract test case ID from parent folder name.
