@@ -5,14 +5,11 @@ import {
   computeAxisStats,
   buildBins,
   binRange,
-  decideMode,
   percentileCap,
   limitCurve,
   FORMATS,
   GRID_MAX_PERAX,
-  GRID_MAX_CELLS,
   LABEL_CELL_MAX,
-  SMOOTH_TARGET,
   BLUR_TARGET,
   type Density,
   type AxisScale,
@@ -23,11 +20,11 @@ const GRID = { left: 110, right: 80, top: 24, bottom: 100 }
 const BLUE_RED = ['#1f3a8a', '#2563eb', '#22d3ee', '#34d399', '#fde047', '#fb923c', '#ef4444']
 const TIP_STYLE = 'font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.5;'
 
-type RenderMode = 'auto' | 'grid' | 'fine' | 'blur'
+type RenderMode = 'auto' | 'grid' | 'blur'
 type Cap = 100 | 95 | 90 | 80
 
-const MODE_OPTIONS: RenderMode[] = ['auto', 'grid', 'fine', 'blur']
-const MODE_LABEL: Record<RenderMode, string> = { auto: 'modeAuto', grid: 'modeGrid', fine: 'modeFine', blur: 'modeBlur' }
+const MODE_OPTIONS: RenderMode[] = ['auto', 'grid', 'blur']
+const MODE_LABEL: Record<RenderMode, string> = { auto: 'modeAuto', grid: 'modeGrid', blur: 'modeBlur' }
 const DENSITY_OPTIONS: Density[] = ['auto', 'fine', 'coarse', 'coarser']
 const DENSITY_LABEL: Record<Density, string> = { auto: 'densityAuto', fine: 'densityFine', coarse: 'densityCoarse', coarser: 'densityCoarser' }
 const SCALE_OPTIONS: AxisScale[] = ['linear', 'log']
@@ -59,7 +56,7 @@ export default function Heatmap2D({
   const [mode, setMode] = useState<RenderMode>('auto')
   const [cap, setCap] = useState<Cap>(95)
   const [density, setDensity] = useState<Density>('auto')
-  const [scale, setScale] = useState<AxisScale>('log')
+  const [scale, setScale] = useState<AxisScale>('linear')
   const [showLimit, setShowLimit] = useState(true)
   const hmContainerRef = useRef<HTMLDivElement>(null)
 
@@ -85,10 +82,10 @@ export default function Heatmap2D({
   const statsX = computeAxisStats(pairs.map((p) => p[0]), xFieldWidth)
   const statsY = computeAxisStats(pairs.map((p) => p[1]), yFieldWidth)
 
-  const effectiveMode: 'grid' | 'fine' | 'blur' =
-    mode === 'auto' ? decideMode(statsX.distinct, statsY.distinct) : mode
+  // grid already adapts (exact cells for few values, binned for many), so auto -> grid
+  const effectiveMode: 'grid' | 'blur' = mode === 'auto' ? 'grid' : mode
 
-  const target = effectiveMode === 'fine' ? SMOOTH_TARGET : effectiveMode === 'blur' ? BLUR_TARGET : GRID_MAX_PERAX
+  const target = effectiveMode === 'blur' ? BLUR_TARGET : GRID_MAX_PERAX
 
   const binsX = buildBins(statsX, target, scale, density)
   const binsY = buildBins(statsY, target, scale, density)

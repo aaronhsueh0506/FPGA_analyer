@@ -34,10 +34,12 @@ export const BLUR_TARGET = 50         // target bins/axis for blurred
 
 // --- resource budget: W * H * bytesPerPixel < RESOURCE_LIMIT (0.5 MB) ---
 export const RESOURCE_LIMIT = 500000
+// color = boundary line, fill = background zone tint (light). 8-bit budget is the
+// largest area (drawn at the back), 32-bit the smallest (drawn on top).
 export const FORMATS = [
-  { label: '8-bit', bytes: 1, color: '#16a34a' },
-  { label: '16-bit', bytes: 2, color: '#f59e0b' },
-  { label: '32-bit', bytes: 4, color: '#dc2626' },
+  { label: '8-bit', bytes: 1, color: '#dc2626', fill: '#fecaca' },
+  { label: '16-bit', bytes: 2, color: '#f59e0b', fill: '#fde68a' },
+  { label: '32-bit', bytes: 4, color: '#16a34a', fill: '#bbf7d0' },
 ]
 
 // nice-number sequence {1,2,5}x10^k, ascending
@@ -174,12 +176,16 @@ export function percentileCap(counts: number[], p: number): number {
 
 // points of the resource-limit boundary W*H*bytes = RESOURCE_LIMIT, clipped to the box.
 // On a log-log axis this renders as a straight line; on linear it is a hyperbola.
+// clampToBox=false: only points whose H is inside the box (clean boundary line).
+// clampToBox=true: every sample, with H clamped to [loY,hiY] so an area fill covers
+// the full in-budget region (used for the scatter background zones).
 export function limitCurve(
   bytes: number,
   loX: number, hiX: number,
   loY: number, hiY: number,
   scale: AxisScale,
-  samples = 80,
+  clampToBox = false,
+  samples = 120,
 ): Array<[number, number]> {
   const cap = RESOURCE_LIMIT / bytes
   const x0 = Math.max(scale === 'log' ? 1 : 0.000001, loX)
@@ -189,7 +195,11 @@ export function limitCurve(
     const w = scale === 'log' ? x0 * Math.pow(x1 / x0, i / samples) : x0 + ((x1 - x0) * i) / samples
     if (w <= 0) continue
     const h = cap / w
-    if (h >= loY && h <= hiY) pts.push([w, h])
+    if (clampToBox) {
+      pts.push([w, Math.min(hiY, Math.max(loY, h))])
+    } else if (h >= loY && h <= hiY) {
+      pts.push([w, h])
+    }
   }
   return pts
 }

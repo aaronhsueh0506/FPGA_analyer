@@ -25,7 +25,7 @@ export default function Scatter({
 }: Props) {
   const { t } = useTranslation()
   const [showLimit, setShowLimit] = useState(true)
-  const [scale, setScale] = useState<AxisScale>('log')
+  const [scale, setScale] = useState<AxisScale>('linear')
 
   const fromIdx = Math.max(0, caseRange.from - 1)
   const toIdx = Math.min(rows.length, caseRange.to)
@@ -40,16 +40,16 @@ export default function Scatter({
     .map((r) => ({ name: r.testCase, value: [r.values[xFieldIndex] ?? 0, r.values[yFieldIndex] ?? 0] as [number, number] }))
     .filter((d) => (scale === 'log' ? d.value[0] > 0 && d.value[1] > 0 : true))
 
-  let xMin = Infinity
   let xMax = 0
-  let yMin = Infinity
   let yMax = 0
+  let xMin = Infinity
+  let yMin = Infinity
   for (const d of data) {
     const [x, y] = d.value
-    if (x < xMin) xMin = x
     if (x > xMax) xMax = x
-    if (y < yMin) yMin = y
     if (y > yMax) yMax = y
+    if (x < xMin) xMin = x
+    if (y < yMin) yMin = y
   }
   if (!Number.isFinite(xMin)) xMin = 0
   if (!Number.isFinite(yMin)) yMin = 0
@@ -57,17 +57,21 @@ export default function Scatter({
   const loX = scale === 'log' ? Math.max(1, xMin) : 0
   const loY = scale === 'log' ? Math.max(1, yMin) : 0
 
-  const limitSeries = showLimit && xMax > 0
-    ? FORMATS.map((f) => ({
+  // Background budget zones: area under each W*H*bytes = 0.5MB boundary, layered so
+  // the strictest (32-bit, smallest area, green) sits on top -> nested colored bands.
+  // Near the origin = fits all formats (green); outward = only 8-bit (red); beyond = over budget (white).
+  const zoneSeries = showLimit && xMax > 0
+    ? FORMATS.map((f, idx) => ({
         name: f.label,
         type: 'line',
-        data: limitCurve(f.bytes, loX, xMax, loY, yMax, scale),
+        data: limitCurve(f.bytes, loX, xMax, loY, yMax, scale, true),
         showSymbol: false,
         smooth: false,
         clip: true,
         silent: true,
-        lineStyle: { color: f.color, width: 1.5, type: 'dashed' },
-        z: 1,
+        lineStyle: { color: f.color, width: 1, type: 'dashed' },
+        areaStyle: { color: f.fill, opacity: 0.5, origin: 'start' },
+        z: 1 + idx,
       }))
     : []
 
@@ -80,10 +84,12 @@ export default function Scatter({
         if (params.seriesType !== 'scatter') return ''
         const testCase = params.data?.name ?? ''
         const [x, y] = params.value as [number, number]
+        const px = x * y
         return `<div style="font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; line-height: 1.5;">
           <div><b>${testCase}</b></div>
           <div>X (${xFieldName}) = ${x}</div>
           <div>Y (${yFieldName}) = ${y}</div>
+          <div>W*H = ${px.toLocaleString()} px</div>
         </div>`
       },
     },
@@ -97,9 +103,12 @@ export default function Scatter({
       name: xFieldName,
       nameLocation: 'middle',
       nameGap: 35,
+      splitNumber: 10,
       nameTextStyle: { color: '#374151', fontSize: 12 },
       axisLabel: { color: '#4b5563', fontSize: 10 },
       splitLine: { lineStyle: { color: '#e5e7eb' } },
+      minorTick: { show: true, splitNumber: 5 },
+      minorSplitLine: { show: true, lineStyle: { color: '#f3f4f6' } },
     },
     yAxis: {
       type: axisType,
@@ -107,11 +116,15 @@ export default function Scatter({
       name: yFieldName,
       nameLocation: 'middle',
       nameGap: 55,
+      splitNumber: 10,
       nameTextStyle: { color: '#374151', fontSize: 12 },
       axisLabel: { color: '#4b5563', fontSize: 10 },
       splitLine: { lineStyle: { color: '#e5e7eb' } },
+      minorTick: { show: true, splitNumber: 5 },
+      minorSplitLine: { show: true, lineStyle: { color: '#f3f4f6' } },
     },
     series: [
+      ...zoneSeries,
       {
         name: 'scatter',
         type: 'scatter',
@@ -119,9 +132,8 @@ export default function Scatter({
         symbolSize: 6,
         itemStyle: { color: '#1f3a8a', opacity: 0.55 },
         emphasis: { itemStyle: { color: '#1f3a8a', opacity: 1, shadowBlur: 6, shadowColor: 'rgba(31, 58, 138, 0.5)' } },
-        z: 2,
+        z: 10,
       },
-      ...limitSeries,
     ],
   }
 
@@ -148,7 +160,7 @@ export default function Scatter({
       <ReactECharts
         key={`${scale}-${showLimit}`}
         option={option}
-        style={{ height: 520, width: '100%' }}
+        style={{ height: 600, width: '100%' }}
         opts={{ renderer: 'canvas' }}
         notMerge
       />
