@@ -132,7 +132,18 @@
       "yAxis": "Y-axis Bit Field",
       "viewHeatmap": "2D Heatmap",
       "viewScatter": "Scatter",
-      "pickFirst": "Please choose X and Y axes"
+      "pickFirst": "Please choose X and Y axes",
+      "renderMode": "Render Mode",
+      "modeAuto": "Auto",
+      "modeGrid": "Precise Grid",
+      "modeFine": "Fine Smooth",
+      "modeBlur": "Blurred",
+      "density": "Density",
+      "densityAuto": "Auto",
+      "densityFine": "Finer",
+      "densityCoarse": "Coarser",
+      "densityCoarser": "Coarsest",
+      "cap": "Color Cap"
     },
     "stats": {
       "histogramTitle": "Mode Bit Field Histograms",

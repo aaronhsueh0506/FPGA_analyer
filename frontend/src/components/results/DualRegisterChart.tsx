@@ -72,6 +72,8 @@ export default function DualRegisterChart({ rows, bitFields, caseRange }: Props)
             yFieldIndex={yIdx}
             xFieldName={bitFields[xIdx].name}
             yFieldName={bitFields[yIdx].name}
+            xFieldWidth={bitFields[xIdx].width}
+            yFieldWidth={bitFields[yIdx].width}
             caseRange={caseRange}
           />
         </div>

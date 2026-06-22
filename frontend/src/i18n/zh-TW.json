@@ -132,7 +132,18 @@
       "yAxis": "Y 軸 Bit Field",
       "viewHeatmap": "2D 熱力圖",
       "viewScatter": "散佈圖",
-      "pickFirst": "請先選擇 X 與 Y 軸"
+      "pickFirst": "請先選擇 X 與 Y 軸",
+      "renderMode": "顯示模式",
+      "modeAuto": "自動",
+      "modeGrid": "精準格狀",
+      "modeFine": "平滑細格",
+      "modeBlur": "平滑模糊",
+      "density": "密度",
+      "densityAuto": "自動",
+      "densityFine": "較細",
+      "densityCoarse": "較粗",
+      "densityCoarser": "更粗",
+      "cap": "色階上限"
     },
     "stats": {
       "histogramTitle": "Mode Bit Field 直方圖",
