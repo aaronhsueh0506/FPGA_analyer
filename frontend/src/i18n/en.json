@@ -144,7 +144,10 @@
       "densityCoarse": "Coarser",
       "densityCoarser": "Coarsest",
       "cap": "Color Cap",
-      "resourceLimit": "Resource limit (W×H×fmt < 500K)"
+      "axisScale": "Axis Scale",
+      "scaleLinear": "Linear",
+      "scaleLog": "Log",
+      "resourceLimit": "Resource limit 0.5MB"
     },
     "stats": {
       "histogramTitle": "Mode Bit Field Histograms",

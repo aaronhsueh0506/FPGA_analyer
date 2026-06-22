@@ -144,7 +144,10 @@
       "densityCoarse": "較粗",
       "densityCoarser": "更粗",
       "cap": "色階上限",
-      "resourceLimit": "資源上限線 (W×H×fmt < 500K)"
+      "axisScale": "軸刻度",
+      "scaleLinear": "線性",
+      "scaleLog": "Log",
+      "resourceLimit": "資源上限線 0.5MB"
     },
     "stats": {
       "histogramTitle": "Mode Bit Field 直方圖",

@@ -1,16 +1,10 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactECharts from 'echarts-for-react'
+import { FORMATS, limitCurve, type AxisScale } from './heatmapData'
 
-// Resource budget: W * H * bytesPerPixel must stay under this.
-const RESOURCE_LIMIT = 500000
-// fmt: 8-bit = 1 byte, 16-bit = 2 bytes, 32-bit = 4 bytes per pixel
-const FORMATS = [
-  { label: '8-bit (x1)', bytes: 1, color: '#16a34a' },
-  { label: '16-bit (x2)', bytes: 2, color: '#f59e0b' },
-  { label: '32-bit (x4)', bytes: 4, color: '#dc2626' },
-]
-const CURVE_SAMPLES = 240
+const SCALE_OPTIONS: AxisScale[] = ['linear', 'log']
+const SCALE_LABEL: Record<AxisScale, string> = { linear: 'scaleLinear', log: 'scaleLog' }
 
 interface Props {
   rows: Array<{ testCase: string; values: number[] }>
@@ -31,6 +25,7 @@ export default function Scatter({
 }: Props) {
   const { t } = useTranslation()
   const [showLimit, setShowLimit] = useState(true)
+  const [scale, setScale] = useState<AxisScale>('log')
 
   const fromIdx = Math.max(0, caseRange.from - 1)
   const toIdx = Math.min(rows.length, caseRange.to)
@@ -40,52 +35,43 @@ export default function Scatter({
     return <div className="empty-state">{t('results.noDataInRange')}</div>
   }
 
-  const data = slicedRows.map((r) => ({
-    name: r.testCase,
-    value: [r.values[xFieldIndex] ?? 0, r.values[yFieldIndex] ?? 0],
-  }))
+  // log axes cannot plot <= 0, so drop those points in log mode
+  const data = slicedRows
+    .map((r) => ({ name: r.testCase, value: [r.values[xFieldIndex] ?? 0, r.values[yFieldIndex] ?? 0] as [number, number] }))
+    .filter((d) => (scale === 'log' ? d.value[0] > 0 && d.value[1] > 0 : true))
 
-  // data bounds (X = W, Y = H) used to clip the constraint curves to the plot box
   let xMin = Infinity
   let xMax = 0
+  let yMin = Infinity
   let yMax = 0
   for (const d of data) {
     const [x, y] = d.value
     if (x < xMin) xMin = x
     if (x > xMax) xMax = x
+    if (y < yMin) yMin = y
     if (y > yMax) yMax = y
   }
   if (!Number.isFinite(xMin)) xMin = 0
+  if (!Number.isFinite(yMin)) yMin = 0
 
-  // Each curve is the boundary W*H*bytes = RESOURCE_LIMIT, i.e. H = LIMIT/(bytes*W).
-  // Sample across the visible W range and keep only points inside the data box so
-  // the lines never expand the axis scale.
+  const loX = scale === 'log' ? Math.max(1, xMin) : 0
+  const loY = scale === 'log' ? Math.max(1, yMin) : 0
+
   const limitSeries = showLimit && xMax > 0
-    ? FORMATS.map((f) => {
-        const cap = RESOURCE_LIMIT / f.bytes
-        const wStart = Math.max(1, Math.floor(xMin))
-        const wEnd = Math.max(wStart, Math.ceil(xMax))
-        const pts: Array<[number, number]> = []
-        for (let i = 0; i <= CURVE_SAMPLES; i++) {
-          const w = wStart + ((wEnd - wStart) * i) / CURVE_SAMPLES
-          if (w <= 0) continue
-          const h = cap / w
-          if (h >= 0 && h <= yMax) pts.push([w, h])
-        }
-        return {
-          name: f.label,
-          type: 'line',
-          data: pts,
-          showSymbol: false,
-          smooth: false,
-          clip: true,
-          lineStyle: { color: f.color, width: 1.5, type: 'dashed' },
-          emphasis: { disabled: true },
-          tooltip: { show: false },
-          z: 1,
-        }
-      })
+    ? FORMATS.map((f) => ({
+        name: f.label,
+        type: 'line',
+        data: limitCurve(f.bytes, loX, xMax, loY, yMax, scale),
+        showSymbol: false,
+        smooth: false,
+        clip: true,
+        silent: true,
+        lineStyle: { color: f.color, width: 1.5, type: 'dashed' },
+        z: 1,
+      }))
     : []
+
+  const axisType = scale === 'log' ? 'log' : 'value'
 
   const option = {
     tooltip: {
@@ -102,24 +88,12 @@ export default function Scatter({
       },
     },
     legend: showLimit
-      ? {
-          data: FORMATS.map((f) => f.label),
-          top: 4,
-          right: 8,
-          itemWidth: 18,
-          itemHeight: 8,
-          textStyle: { fontSize: 10, color: '#6b7280' },
-        }
+      ? { data: FORMATS.map((f) => f.label), top: 4, right: 8, itemWidth: 18, itemHeight: 8, textStyle: { fontSize: 10, color: '#6b7280' } }
       : undefined,
-    grid: {
-      left: 80,
-      right: 30,
-      top: showLimit ? 40 : 30,
-      bottom: 70,
-    },
+    grid: { left: 80, right: 30, top: showLimit ? 44 : 30, bottom: 70 },
     xAxis: {
-      type: 'value',
-      min: 0,
+      type: axisType,
+      min: scale === 'log' ? undefined : 0,
       name: xFieldName,
       nameLocation: 'middle',
       nameGap: 35,
@@ -128,8 +102,8 @@ export default function Scatter({
       splitLine: { lineStyle: { color: '#e5e7eb' } },
     },
     yAxis: {
-      type: 'value',
-      min: 0,
+      type: axisType,
+      min: scale === 'log' ? undefined : 0,
       name: yFieldName,
       nameLocation: 'middle',
       nameGap: 55,
@@ -144,14 +118,7 @@ export default function Scatter({
         data,
         symbolSize: 6,
         itemStyle: { color: '#1f3a8a', opacity: 0.55 },
-        emphasis: {
-          itemStyle: {
-            color: '#1f3a8a',
-            opacity: 1,
-            shadowBlur: 6,
-            shadowColor: 'rgba(31, 58, 138, 0.5)',
-          },
-        },
+        emphasis: { itemStyle: { color: '#1f3a8a', opacity: 1, shadowBlur: 6, shadowColor: 'rgba(31, 58, 138, 0.5)' } },
         z: 2,
       },
       ...limitSeries,
@@ -160,16 +127,28 @@ export default function Scatter({
 
   return (
     <div>
-      <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', marginBottom: 8 }}>
-        <label style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: '#6b7280', cursor: 'pointer' }}>
-          <input type="checkbox" checked={showLimit} onChange={(e) => setShowLimit(e.target.checked)} />
-          {t('results.dualRegister.resourceLimit')}
-        </label>
+      <div className="toolbar" style={{ marginBottom: 12 }}>
+        <div className="group">
+          <label>{t('results.dualRegister.axisScale')}</label>
+          <div className="inline-toggle">
+            {SCALE_OPTIONS.map((s) => (
+              <button key={s} className={scale === s ? 'active' : ''} onClick={() => setScale(s)}>
+                {t('results.dualRegister.' + SCALE_LABEL[s])}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className="group">
+          <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+            <input type="checkbox" checked={showLimit} onChange={(e) => setShowLimit(e.target.checked)} />
+            {t('results.dualRegister.resourceLimit')}
+          </label>
+        </div>
       </div>
       <ReactECharts
-        key={showLimit ? 'limit-on' : 'limit-off'}
+        key={`${scale}-${showLimit}`}
         option={option}
-        style={{ height: 420, width: '100%' }}
+        style={{ height: 520, width: '100%' }}
         opts={{ renderer: 'canvas' }}
         notMerge
       />
