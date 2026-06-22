@@ -30,7 +30,7 @@ export const GRID_MAX_PERAX = 50      // per-axis category cap for auto -> preci
 export const GRID_MAX_CELLS = 2500    // total cell cap for auto -> precise grid
 export const LABEL_CELL_MAX = 200     // total cells at/below which grid mode prints the count in each cell
 export const SMOOTH_TARGET = 40       // target bins/axis for fine-smooth
-export const BLUR_TARGET = 30         // target bins/axis for blurred
+export const BLUR_TARGET = 50         // target bins/axis for blurred (finer sampling = smoother field)
 
 // nice-number sequence {1,2,5}x10^k, ascending
 const NICE_SEQUENCE: number[] = (() => {

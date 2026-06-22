@@ -143,7 +143,8 @@
       "densityFine": "Finer",
       "densityCoarse": "Coarser",
       "densityCoarser": "Coarsest",
-      "cap": "Color Cap"
+      "cap": "Color Cap",
+      "resourceLimit": "Resource limit (W×H×fmt < 500K)"
     },
     "stats": {
       "histogramTitle": "Mode Bit Field Histograms",

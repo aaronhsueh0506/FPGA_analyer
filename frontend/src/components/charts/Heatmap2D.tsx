@@ -145,11 +145,12 @@ export default function Heatmap2D({
     const yCells = yCatVals.length
     const xSpacing = xCells > 1 ? W / (xCells - 1) : W
     const ySpacing = yCells > 1 ? H / (yCells - 1) : H
-    // radius below the cell spacing so adjacent blobs stay distinct
-    const radius = Math.max(6, Math.min(xSpacing, ySpacing) * 0.45)
+    // overlapping kernels -> smooth KDE field (the v0.42 look); the percentile
+    // cap (not raw max) handles the colour so it no longer washes out to all-red
+    const radius = Math.max(8, Math.min(Math.max(xSpacing, ySpacing) * 1.2, Math.min(W, H) * 0.08))
 
     container.innerHTML = ''
-    const hm = h337.create({ container, maxOpacity: 0.9, minOpacity: 0, blur: 0.75, radius })
+    const hm = h337.create({ container, maxOpacity: 0.9, minOpacity: 0, blur: 0.65, radius })
     hm.setData({
       max: cappedMax,
       data: heatData.map(([xi, yi, c]) => ({
