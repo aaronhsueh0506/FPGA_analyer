@@ -130,13 +130,13 @@
     "dualRegister": {
       "xAxis": "X 軸 Bit Field",
       "yAxis": "Y 軸 Bit Field",
+      "swap": "X/Y 對調",
       "viewHeatmap": "2D 熱力圖",
       "viewScatter": "散佈圖",
       "pickFirst": "請先選擇 X 與 Y 軸",
       "renderMode": "顯示模式",
       "modeAuto": "自動",
       "modeGrid": "精準格狀",
-      "modeFine": "平滑細格",
       "modeBlur": "平滑模糊",
       "density": "密度",
       "densityAuto": "自動",
@@ -144,9 +144,6 @@
       "densityCoarse": "較粗",
       "densityCoarser": "更粗",
       "cap": "色階上限",
-      "axisScale": "軸刻度",
-      "scaleLinear": "線性",
-      "scaleLog": "Log",
       "resourceLimit": "資源上限線 0.5MB"
     },
     "stats": {

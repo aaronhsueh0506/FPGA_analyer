@@ -12,7 +12,6 @@ import {
   LABEL_CELL_MAX,
   BLUR_TARGET,
   type Density,
-  type AxisScale,
 } from './heatmapData'
 
 const GRID = { left: 110, right: 80, top: 24, bottom: 100 }
@@ -27,8 +26,6 @@ const MODE_OPTIONS: RenderMode[] = ['auto', 'grid', 'blur']
 const MODE_LABEL: Record<RenderMode, string> = { auto: 'modeAuto', grid: 'modeGrid', blur: 'modeBlur' }
 const DENSITY_OPTIONS: Density[] = ['auto', 'fine', 'coarse', 'coarser']
 const DENSITY_LABEL: Record<Density, string> = { auto: 'densityAuto', fine: 'densityFine', coarse: 'densityCoarse', coarser: 'densityCoarser' }
-const SCALE_OPTIONS: AxisScale[] = ['linear', 'log']
-const SCALE_LABEL: Record<AxisScale, string> = { linear: 'scaleLinear', log: 'scaleLog' }
 const CAP_OPTIONS: Cap[] = [100, 95, 90, 80]
 
 interface Props {
@@ -56,7 +53,6 @@ export default function Heatmap2D({
   const [mode, setMode] = useState<RenderMode>('auto')
   const [cap, setCap] = useState<Cap>(95)
   const [density, setDensity] = useState<Density>('auto')
-  const [scale, setScale] = useState<AxisScale>('linear')
   const [showLimit, setShowLimit] = useState(true)
   const hmContainerRef = useRef<HTMLDivElement>(null)
 
@@ -87,8 +83,8 @@ export default function Heatmap2D({
 
   const target = effectiveMode === 'blur' ? BLUR_TARGET : GRID_MAX_PERAX
 
-  const binsX = buildBins(statsX, target, scale, density)
-  const binsY = buildBins(statsY, target, scale, density)
+  const binsX = buildBins(statsX, target, 'linear', density)
+  const binsY = buildBins(statsY, target, 'linear', density)
 
   const cellCounts = new Map<string, number>()
   for (const [x, y] of pairs) {
@@ -121,7 +117,7 @@ export default function Heatmap2D({
         type: 'line',
         xAxisIndex: 1,
         yAxisIndex: 1,
-        data: limitCurve(f.bytes, binsX.lo, binsX.hi, binsY.lo, binsY.hi, scale),
+        data: limitCurve(f.bytes, binsX.lo, binsX.hi, binsY.lo, binsY.hi, 'linear'),
         showSymbol: false,
         smooth: false,
         clip: true,
@@ -137,10 +133,7 @@ export default function Heatmap2D({
   const loY = binsY.lo
   const hiY = Math.max(binsY.hi, loY + 1)
 
-  const toFrac = (v: number, lo: number, hi: number) =>
-    scale === 'log'
-      ? (Math.log(Math.max(v, lo)) - Math.log(lo)) / (Math.log(hi) - Math.log(lo))
-      : (v - lo) / (hi - lo)
+  const toFrac = (v: number, lo: number, hi: number) => (v - lo) / (hi - lo)
 
   // ---- heatmap.js blob (blur mode only) ----
   useEffect(() => {
@@ -183,16 +176,6 @@ export default function Heatmap2D({
           {MODE_OPTIONS.map((m) => (
             <button key={m} className={mode === m ? 'active' : ''} onClick={() => setMode(m)}>
               {t('results.dualRegister.' + MODE_LABEL[m])}
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="group">
-        <label>{t('results.dualRegister.axisScale')}</label>
-        <div className="inline-toggle">
-          {SCALE_OPTIONS.map((s) => (
-            <button key={s} className={scale === s ? 'active' : ''} onClick={() => setScale(s)}>
-              {t('results.dualRegister.' + SCALE_LABEL[s])}
             </button>
           ))}
         </div>
@@ -241,12 +224,12 @@ export default function Heatmap2D({
   // ---- blurred (heatmap.js) branch: invisible value-axis scatter + h337 overlay ----
   if (effectiveMode === 'blur') {
     const scatterData = rawCells.map(([xi, yi, c]) => [binsX.labels[xi], binsY.labels[yi], c])
-    const axisType = scale === 'log' ? 'log' : 'value'
+    const axisType = 'value'
     const blurLimit = showLimit
       ? FORMATS.map((f) => ({
           name: f.label,
           type: 'line',
-          data: limitCurve(f.bytes, loX, hiX, loY, hiY, scale),
+          data: limitCurve(f.bytes, loX, hiX, loY, hiY, 'linear'),
           showSymbol: false,
           clip: true,
           silent: true,
@@ -280,7 +263,7 @@ export default function Heatmap2D({
       <div>
         {renderControls()}
         <div style={{ position: 'relative' }}>
-          <ReactECharts key={`blur-${scale}-${showLimit}`} option={blurOption} style={{ height, width: '100%' }} opts={{ renderer: 'canvas' }} notMerge />
+          <ReactECharts key={`blur-${showLimit}`} option={blurOption} style={{ height, width: '100%' }} opts={{ renderer: 'canvas' }} notMerge />
           <div style={{ position: 'absolute', left: GRID.left, top: showLimit ? 40 : GRID.top, right: GRID.right, bottom: GRID.bottom, pointerEvents: 'none', overflow: 'hidden' }}>
             <div ref={hmContainerRef} style={{ width: '100%', height: '100%' }} />
           </div>
@@ -301,7 +284,7 @@ export default function Heatmap2D({
   const showLabels = effectiveMode === 'grid' && rawCells.length <= LABEL_CELL_MAX
   const xLabels = binsX.labels.map(String)
   const yLabels = binsY.labels.map(String)
-  const secAxisType = scale === 'log' ? 'log' : 'value'
+  const secAxisType = 'value'
 
   const xAxisDef: any[] = [
     {
@@ -370,7 +353,7 @@ export default function Heatmap2D({
     <div>
       {renderControls()}
       <ReactECharts
-        key={`${effectiveMode}-${scale}-${cap}-${density}-${showLimit}-${xLabels.length}x${yLabels.length}`}
+        key={`${effectiveMode}-${cap}-${density}-${showLimit}-${xLabels.length}x${yLabels.length}`}
         option={option}
         style={{ height, width: '100%' }}
         opts={{ renderer: 'canvas' }}

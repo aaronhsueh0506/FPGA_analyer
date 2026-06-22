@@ -43,6 +43,15 @@ export default function DualRegisterChart({ rows, bitFields, caseRange }: Props)
             ))}
           </select>
         </div>
+        <div className="group">
+          <button
+            className="btn"
+            onClick={() => { const a = xIdx; setXIdx(yIdx); setYIdx(a) }}
+            title={t('results.dualRegister.swap')}
+          >
+            {t('results.dualRegister.swap')}
+          </button>
+        </div>
         <div className="divider" />
         <div className="group">
           <div className="inline-toggle">

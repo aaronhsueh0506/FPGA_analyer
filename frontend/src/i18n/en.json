@@ -130,13 +130,13 @@
     "dualRegister": {
       "xAxis": "X-axis Bit Field",
       "yAxis": "Y-axis Bit Field",
+      "swap": "Swap X/Y",
       "viewHeatmap": "2D Heatmap",
       "viewScatter": "Scatter",
       "pickFirst": "Please choose X and Y axes",
       "renderMode": "Render Mode",
       "modeAuto": "Auto",
       "modeGrid": "Precise Grid",
-      "modeFine": "Fine Smooth",
       "modeBlur": "Blurred",
       "density": "Density",
       "densityAuto": "Auto",
@@ -144,9 +144,6 @@
       "densityCoarse": "Coarser",
       "densityCoarser": "Coarsest",
       "cap": "Color Cap",
-      "axisScale": "Axis Scale",
-      "scaleLinear": "Linear",
-      "scaleLog": "Log",
       "resourceLimit": "Resource limit 0.5MB"
     },
     "stats": {

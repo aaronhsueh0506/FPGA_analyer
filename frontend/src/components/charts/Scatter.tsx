@@ -1,10 +1,7 @@
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ReactECharts from 'echarts-for-react'
-import { FORMATS, limitCurve, type AxisScale } from './heatmapData'
-
-const SCALE_OPTIONS: AxisScale[] = ['linear', 'log']
-const SCALE_LABEL: Record<AxisScale, string> = { linear: 'scaleLinear', log: 'scaleLog' }
+import { FORMATS, limitCurve } from './heatmapData'
 
 interface Props {
   rows: Array<{ testCase: string; values: number[] }>
@@ -25,7 +22,6 @@ export default function Scatter({
 }: Props) {
   const { t } = useTranslation()
   const [showLimit, setShowLimit] = useState(true)
-  const [scale, setScale] = useState<AxisScale>('linear')
 
   const fromIdx = Math.max(0, caseRange.from - 1)
   const toIdx = Math.min(rows.length, caseRange.to)
@@ -35,27 +31,21 @@ export default function Scatter({
     return <div className="empty-state">{t('results.noDataInRange')}</div>
   }
 
-  // log axes cannot plot <= 0, so drop those points in log mode
-  const data = slicedRows
-    .map((r) => ({ name: r.testCase, value: [r.values[xFieldIndex] ?? 0, r.values[yFieldIndex] ?? 0] as [number, number] }))
-    .filter((d) => (scale === 'log' ? d.value[0] > 0 && d.value[1] > 0 : true))
+  const data = slicedRows.map((r) => ({
+    name: r.testCase,
+    value: [r.values[xFieldIndex] ?? 0, r.values[yFieldIndex] ?? 0] as [number, number],
+  }))
 
   let xMax = 0
   let yMax = 0
-  let xMin = Infinity
-  let yMin = Infinity
   for (const d of data) {
     const [x, y] = d.value
     if (x > xMax) xMax = x
     if (y > yMax) yMax = y
-    if (x < xMin) xMin = x
-    if (y < yMin) yMin = y
   }
-  if (!Number.isFinite(xMin)) xMin = 0
-  if (!Number.isFinite(yMin)) yMin = 0
 
-  const loX = scale === 'log' ? Math.max(1, xMin) : 0
-  const loY = scale === 'log' ? Math.max(1, yMin) : 0
+  const loX = 0
+  const loY = 0
 
   // Background budget zones: area under each W*H*bytes = 0.5MB boundary, layered so
   // the strictest (32-bit, smallest area, green) sits on top -> nested colored bands.
@@ -64,7 +54,7 @@ export default function Scatter({
     ? FORMATS.map((f, idx) => ({
         name: f.label,
         type: 'line',
-        data: limitCurve(f.bytes, loX, xMax, loY, yMax, scale, true),
+        data: limitCurve(f.bytes, loX, xMax, loY, yMax, 'linear', true),
         showSymbol: false,
         smooth: false,
         clip: true,
@@ -74,8 +64,6 @@ export default function Scatter({
         z: 1 + idx,
       }))
     : []
-
-  const axisType = scale === 'log' ? 'log' : 'value'
 
   const option = {
     tooltip: {
@@ -98,8 +86,8 @@ export default function Scatter({
       : undefined,
     grid: { left: 80, right: 30, top: showLimit ? 44 : 30, bottom: 70 },
     xAxis: {
-      type: axisType,
-      min: scale === 'log' ? undefined : 0,
+      type: 'value',
+      min: 0,
       name: xFieldName,
       nameLocation: 'middle',
       nameGap: 35,
@@ -111,8 +99,8 @@ export default function Scatter({
       minorSplitLine: { show: true, lineStyle: { color: '#f3f4f6' } },
     },
     yAxis: {
-      type: axisType,
-      min: scale === 'log' ? undefined : 0,
+      type: 'value',
+      min: 0,
       name: yFieldName,
       nameLocation: 'middle',
       nameGap: 55,
@@ -141,16 +129,6 @@ export default function Scatter({
     <div>
       <div className="toolbar" style={{ marginBottom: 12 }}>
         <div className="group">
-          <label>{t('results.dualRegister.axisScale')}</label>
-          <div className="inline-toggle">
-            {SCALE_OPTIONS.map((s) => (
-              <button key={s} className={scale === s ? 'active' : ''} onClick={() => setScale(s)}>
-                {t('results.dualRegister.' + SCALE_LABEL[s])}
-              </button>
-            ))}
-          </div>
-        </div>
-        <div className="group">
           <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
             <input type="checkbox" checked={showLimit} onChange={(e) => setShowLimit(e.target.checked)} />
             {t('results.dualRegister.resourceLimit')}
@@ -158,7 +136,7 @@ export default function Scatter({
         </div>
       </div>
       <ReactECharts
-        key={`${scale}-${showLimit}`}
+        key={`${showLimit}`}
         option={option}
         style={{ height: 600, width: '100%' }}
         opts={{ renderer: 'canvas' }}
