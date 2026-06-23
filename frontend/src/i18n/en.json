@@ -144,6 +144,11 @@
       "densityCoarse": "Coarser",
       "densityCoarser": "Coarsest",
       "cap": "Color Cap",
+      "fontSize": "Font Size",
+      "fontS": "S",
+      "fontM": "M",
+      "fontL": "L",
+      "fontXL": "XL",
       "resourceLimit": "Resource limit 0.5MB"
     },
     "stats": {

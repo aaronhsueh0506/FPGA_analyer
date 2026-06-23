@@ -144,6 +144,11 @@
       "densityCoarse": "較粗",
       "densityCoarser": "更粗",
       "cap": "色階上限",
+      "fontSize": "字體大小",
+      "fontS": "小",
+      "fontM": "中",
+      "fontL": "大",
+      "fontXL": "特大",
       "resourceLimit": "資源上限線 0.5MB"
     },
     "stats": {

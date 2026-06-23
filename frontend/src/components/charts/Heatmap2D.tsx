@@ -28,6 +28,17 @@ const DENSITY_OPTIONS: Density[] = ['auto', 'fine', 'coarse', 'coarser']
 const DENSITY_LABEL: Record<Density, string> = { auto: 'densityAuto', fine: 'densityFine', coarse: 'densityCoarse', coarser: 'densityCoarser' }
 const CAP_OPTIONS: Cap[] = [100, 95, 90, 80]
 
+type FontSize = 's' | 'm' | 'l' | 'xl'
+const FONT_OPTIONS: FontSize[] = ['s', 'm', 'l', 'xl']
+const FONT_LABEL: Record<FontSize, string> = { s: 'fontS', m: 'fontM', l: 'fontL', xl: 'fontXL' }
+// count = in-cell number, axis = axis tick labels
+const FONT_PX: Record<FontSize, { count: number; axis: number }> = {
+  s: { count: 8, axis: 9 },
+  m: { count: 10, axis: 10 }, // approx. current look (default)
+  l: { count: 13, axis: 12 },
+  xl: { count: 16, axis: 14 },
+}
+
 interface Props {
   rows: Array<{ testCase: string; values: number[] }>
   xFieldIndex: number
@@ -54,7 +65,10 @@ export default function Heatmap2D({
   const [cap, setCap] = useState<Cap>(95)
   const [density, setDensity] = useState<Density>('auto')
   const [showLimit, setShowLimit] = useState(true)
+  const [fontSize, setFontSize] = useState<FontSize>('m')
   const hmContainerRef = useRef<HTMLDivElement>(null)
+
+  const fpx = FONT_PX[fontSize]
 
   // a new axis / case range invalidates a manual density choice
   useEffect(() => {
@@ -201,6 +215,16 @@ export default function Heatmap2D({
         </div>
       </div>
       <div className="group">
+        <label>{t('results.dualRegister.fontSize')}</label>
+        <div className="inline-toggle">
+          {FONT_OPTIONS.map((f) => (
+            <button key={f} className={fontSize === f ? 'active' : ''} onClick={() => setFontSize(f)}>
+              {t('results.dualRegister.' + FONT_LABEL[f])}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="group">
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
           <input type="checkbox" checked={showLimit} onChange={(e) => setShowLimit(e.target.checked)} />
           {t('results.dualRegister.resourceLimit')}
@@ -254,8 +278,8 @@ export default function Heatmap2D({
         },
       },
       grid: { ...GRID, top: showLimit ? 40 : GRID.top },
-      xAxis: { type: axisType, min: loX, max: hiX, name: xFieldName, nameLocation: 'middle', nameGap: 55, nameTextStyle: { color: '#374151', fontSize: 12 }, axisLabel: { rotate: 45, fontSize: 10, color: '#4b5563' }, axisTick: { show: false } },
-      yAxis: { type: axisType, min: loY, max: hiY, name: yFieldName, nameLocation: 'middle', nameGap: 85, nameTextStyle: { color: '#374151', fontSize: 12 }, axisLabel: { fontSize: 10, color: '#4b5563' }, axisTick: { show: false } },
+      xAxis: { type: axisType, min: loX, max: hiX, name: xFieldName, nameLocation: 'middle', nameGap: 55, nameTextStyle: { color: '#374151', fontSize: 12 }, axisLabel: { rotate: 45, fontSize: fpx.axis, color: '#4b5563' }, axisTick: { show: false } },
+      yAxis: { type: axisType, min: loY, max: hiY, name: yFieldName, nameLocation: 'middle', nameGap: 85, nameTextStyle: { color: '#374151', fontSize: 12 }, axisLabel: { fontSize: fpx.axis, color: '#4b5563' }, axisTick: { show: false } },
       series: [{ type: 'scatter', data: scatterData, symbolSize: 8, itemStyle: { opacity: 0 }, emphasis: { disabled: true }, z: 2 }, ...blurLimit],
     }
 
@@ -263,7 +287,7 @@ export default function Heatmap2D({
       <div>
         {renderControls()}
         <div style={{ position: 'relative' }}>
-          <ReactECharts key={`blur-${showLimit}`} option={blurOption} style={{ height, width: '100%' }} opts={{ renderer: 'canvas' }} notMerge />
+          <ReactECharts key={`blur-${showLimit}-${fontSize}`} option={blurOption} style={{ height, width: '100%' }} opts={{ renderer: 'canvas' }} notMerge />
           <div style={{ position: 'absolute', left: GRID.left, top: showLimit ? 40 : GRID.top, right: GRID.right, bottom: GRID.bottom, pointerEvents: 'none', overflow: 'hidden' }}>
             <div ref={hmContainerRef} style={{ width: '100%', height: '100%' }} />
           </div>
@@ -290,7 +314,7 @@ export default function Heatmap2D({
     {
       type: 'category', data: xLabels, name: xFieldName, nameLocation: 'middle', nameGap: 55,
       nameTextStyle: { color: '#374151', fontSize: 12 },
-      axisLabel: { rotate: 45, fontSize: 10, color: '#4b5563', interval: xLabels.length > 30 ? Math.ceil(xLabels.length / 30) : 0 },
+      axisLabel: { rotate: 45, fontSize: fpx.axis, color: '#4b5563', interval: xLabels.length > 30 ? Math.ceil(xLabels.length / 30) : 0 },
       axisTick: { show: false }, splitArea: { show: false },
     },
   ]
@@ -298,7 +322,7 @@ export default function Heatmap2D({
     {
       type: 'category', data: yLabels, name: yFieldName, nameLocation: 'middle', nameGap: 85,
       nameTextStyle: { color: '#374151', fontSize: 12 },
-      axisLabel: { fontSize: 10, color: '#4b5563', interval: yLabels.length > 40 ? Math.ceil(yLabels.length / 40) : 0 },
+      axisLabel: { fontSize: fpx.axis, color: '#4b5563', interval: yLabels.length > 40 ? Math.ceil(yLabels.length / 40) : 0 },
       axisTick: { show: false }, splitArea: { show: false },
     },
   ]
@@ -341,7 +365,7 @@ export default function Heatmap2D({
         data: heatData,
         progressive: heatData.length > 3000 ? 1000 : 0,
         progressiveThreshold: 3000,
-        label: { show: showLabels, fontSize: 9, color: '#111827', formatter: (p: any) => String(Math.round(Math.expm1((p.value as any[])[2]))) },
+        label: { show: showLabels, fontSize: fpx.count, color: '#111827', formatter: (p: any) => String(Math.round(Math.expm1((p.value as any[])[2]))) },
         itemStyle: { borderWidth: 0 },
         emphasis: { itemStyle: { shadowBlur: 6, shadowColor: 'rgba(0,0,0,0.3)' } },
       },
@@ -353,7 +377,7 @@ export default function Heatmap2D({
     <div>
       {renderControls()}
       <ReactECharts
-        key={`${effectiveMode}-${cap}-${density}-${showLimit}-${xLabels.length}x${yLabels.length}`}
+        key={`${effectiveMode}-${cap}-${density}-${showLimit}-${fontSize}-${xLabels.length}x${yLabels.length}`}
         option={option}
         style={{ height, width: '100%' }}
         opts={{ renderer: 'canvas' }}
