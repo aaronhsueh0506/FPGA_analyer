@@ -1,9 +1,10 @@
-# FPGA Register Analyzer — v0.43.0
+# FPGA Register Analyzer — v0.43.1
 
 A local web tool for analyzing FPGA test case results.
 
 ## Changelog
 
+- **v0.43.1** (2026-06-23): Added a font size control (S/M/L/XL) to the 2D heatmap. One control scales both the in-cell count numbers and the axis tick labels; the default matches the previous look.
 - **v0.43.0** (2026-06-22): Reworked the distribution views. The 2D heatmap is now adaptive — a precise grid (one cell per value, in-cell counts) or a blurred KDE, with automatic bin sizing, a density control, log-scaled cell coloring so low counts stay visible, and a percentile color cap. The scatter plot shades the `W×H×fmt < 0.5MB` resource-budget zones (8/16/32-bit) and the heatmap overlays the same limit lines. Added an X/Y axis swap button.
 - **v0.42.0** (2026-06-11): Mode bit fields support segment-style valid range (`0-2, 5, 7-9`). Range popup shows min/max first; an optional checkbox enables segment input constrained within min/max. Coverage and combination analysis use the customized valid space. Histogram hides gap bars outside segment ranges.
 - **v0.41.0**: Value filter supports multiple AND conditions.
