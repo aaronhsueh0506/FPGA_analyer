@@ -62,6 +62,7 @@ export default function Heatmap2D({
   const [density, setDensity] = useState<Density>('auto')
   const [showLimit, setShowLimit] = useState(true)
   const [countFont, setCountFont] = useState<number>(COUNT_FONT_DEFAULT)
+  const [showNumbers, setShowNumbers] = useState(true)
   const hmContainerRef = useRef<HTMLDivElement>(null)
 
   // a new axis / case range invalidates a manual density choice
@@ -209,21 +210,25 @@ export default function Heatmap2D({
         </div>
       </div>
       <div className="group">
-        <label>{t('results.dualRegister.fontSize')}</label>
-        <div className="inline-toggle">
-          <button onClick={() => setCountFont((v) => clampFont(v - 1))}>−</button>
+        <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
+          <input type="checkbox" checked={showNumbers} onChange={(e) => setShowNumbers(e.target.checked)} />
+          {t('results.dualRegister.showNumbers')}
+        </label>
+        <div className="inline-toggle" style={{ opacity: showNumbers ? 1 : 0.4 }}>
+          <button disabled={!showNumbers} onClick={() => setCountFont((v) => clampFont(v - 1))}>−</button>
           <input
             type="number"
             min={COUNT_FONT_MIN}
             max={COUNT_FONT_MAX}
             value={countFont}
+            disabled={!showNumbers}
             onChange={(e) => {
               const n = Number(e.target.value)
               if (e.target.value !== '' && Number.isFinite(n)) setCountFont(clampFont(n))
             }}
             style={{ width: 44, textAlign: 'center', padding: '5px 4px', border: 'none', borderLeft: '1px solid var(--border-strong)', borderRight: '1px solid var(--border-strong)' }}
           />
-          <button onClick={() => setCountFont((v) => clampFont(v + 1))}>＋</button>
+          <button disabled={!showNumbers} onClick={() => setCountFont((v) => clampFont(v + 1))}>＋</button>
         </div>
         <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>px</span>
       </div>
@@ -308,7 +313,7 @@ export default function Heatmap2D({
   }
 
   // ---- ECharts native heatmap branch (grid / fine) ----
-  const showLabels = effectiveMode === 'grid' && rawCells.length <= LABEL_CELL_MAX
+  const showLabels = showNumbers && effectiveMode === 'grid' && rawCells.length <= LABEL_CELL_MAX
   const xLabels = binsX.labels.map(String)
   const yLabels = binsY.labels.map(String)
   const secAxisType = 'value'
@@ -380,7 +385,7 @@ export default function Heatmap2D({
     <div>
       {renderControls()}
       <ReactECharts
-        key={`${effectiveMode}-${cap}-${density}-${showLimit}-${countFont}-${xLabels.length}x${yLabels.length}`}
+        key={`${effectiveMode}-${cap}-${density}-${showLimit}-${countFont}-${showLabels}-${xLabels.length}x${yLabels.length}`}
         option={option}
         style={{ height, width: '100%' }}
         opts={{ renderer: 'canvas' }}

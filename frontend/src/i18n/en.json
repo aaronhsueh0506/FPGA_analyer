@@ -144,6 +144,7 @@
       "densityCoarse": "Coarser",
       "densityCoarser": "Coarsest",
       "cap": "Color Cap",
+      "showNumbers": "Show Numbers",
       "fontSize": "Count Font",
       "resourceLimit": "Resource limit 0.5MB"
     },

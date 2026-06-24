@@ -144,6 +144,7 @@
       "densityCoarse": "較粗",
       "densityCoarser": "更粗",
       "cap": "色階上限",
+      "showNumbers": "顯示數字",
       "fontSize": "數量字體",
       "resourceLimit": "資源上限線 0.5MB"
     },
