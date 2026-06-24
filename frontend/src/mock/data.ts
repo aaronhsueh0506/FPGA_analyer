@@ -306,8 +306,8 @@ export function generateMockBatchDetail(batchId: number): BatchDetail {
 }
 
 export const versionInfo = {
-  version: 'v0.43.1',
-  releaseDate: '2026-06-23',
+  version: 'v0.43.1.alpha',
+  releaseDate: '2026-06-24',
   author: 'Aaron Hsueh',
   system: 'FPGA Register Analyzer'
 }

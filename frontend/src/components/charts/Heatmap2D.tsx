@@ -28,16 +28,12 @@ const DENSITY_OPTIONS: Density[] = ['auto', 'fine', 'coarse', 'coarser']
 const DENSITY_LABEL: Record<Density, string> = { auto: 'densityAuto', fine: 'densityFine', coarse: 'densityCoarse', coarser: 'densityCoarser' }
 const CAP_OPTIONS: Cap[] = [100, 95, 90, 80]
 
-type FontSize = 's' | 'm' | 'l' | 'xl'
-const FONT_OPTIONS: FontSize[] = ['s', 'm', 'l', 'xl']
-const FONT_LABEL: Record<FontSize, string> = { s: 'fontS', m: 'fontM', l: 'fontL', xl: 'fontXL' }
-// count = in-cell number, axis = axis tick labels
-const FONT_PX: Record<FontSize, { count: number; axis: number }> = {
-  s: { count: 8, axis: 9 },
-  m: { count: 10, axis: 10 }, // approx. current look (default)
-  l: { count: 13, axis: 12 },
-  xl: { count: 16, axis: 14 },
-}
+// in-cell count number font is user-adjustable; axis tick labels stay fixed
+const COUNT_FONT_MIN = 6
+const COUNT_FONT_MAX = 28
+const COUNT_FONT_DEFAULT = 10 // approx. prior "M" in-cell size, keeps the look
+const AXIS_FONT_PX = 10 // axis tick labels fixed (pre-v0.43.1 behaviour)
+const clampFont = (n: number) => Math.min(COUNT_FONT_MAX, Math.max(COUNT_FONT_MIN, Math.round(n)))
 
 interface Props {
   rows: Array<{ testCase: string; values: number[] }>
@@ -65,10 +61,8 @@ export default function Heatmap2D({
   const [cap, setCap] = useState<Cap>(95)
   const [density, setDensity] = useState<Density>('auto')
   const [showLimit, setShowLimit] = useState(true)
-  const [fontSize, setFontSize] = useState<FontSize>('m')
+  const [countFont, setCountFont] = useState<number>(COUNT_FONT_DEFAULT)
   const hmContainerRef = useRef<HTMLDivElement>(null)
-
-  const fpx = FONT_PX[fontSize]
 
   // a new axis / case range invalidates a manual density choice
   useEffect(() => {
@@ -217,12 +211,21 @@ export default function Heatmap2D({
       <div className="group">
         <label>{t('results.dualRegister.fontSize')}</label>
         <div className="inline-toggle">
-          {FONT_OPTIONS.map((f) => (
-            <button key={f} className={fontSize === f ? 'active' : ''} onClick={() => setFontSize(f)}>
-              {t('results.dualRegister.' + FONT_LABEL[f])}
-            </button>
-          ))}
+          <button onClick={() => setCountFont((v) => clampFont(v - 1))}>−</button>
+          <input
+            type="number"
+            min={COUNT_FONT_MIN}
+            max={COUNT_FONT_MAX}
+            value={countFont}
+            onChange={(e) => {
+              const n = Number(e.target.value)
+              if (e.target.value !== '' && Number.isFinite(n)) setCountFont(clampFont(n))
+            }}
+            style={{ width: 44, textAlign: 'center', padding: '5px 4px', border: 'none', borderLeft: '1px solid var(--border-strong)', borderRight: '1px solid var(--border-strong)' }}
+          />
+          <button onClick={() => setCountFont((v) => clampFont(v + 1))}>＋</button>
         </div>
+        <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>px</span>
       </div>
       <div className="group">
         <label style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer' }}>
@@ -278,8 +281,8 @@ export default function Heatmap2D({
         },
       },
       grid: { ...GRID, top: showLimit ? 40 : GRID.top },
-      xAxis: { type: axisType, min: loX, max: hiX, name: xFieldName, nameLocation: 'middle', nameGap: 55, nameTextStyle: { color: '#374151', fontSize: 12 }, axisLabel: { rotate: 45, fontSize: fpx.axis, color: '#4b5563' }, axisTick: { show: false } },
-      yAxis: { type: axisType, min: loY, max: hiY, name: yFieldName, nameLocation: 'middle', nameGap: 85, nameTextStyle: { color: '#374151', fontSize: 12 }, axisLabel: { fontSize: fpx.axis, color: '#4b5563' }, axisTick: { show: false } },
+      xAxis: { type: axisType, min: loX, max: hiX, name: xFieldName, nameLocation: 'middle', nameGap: 55, nameTextStyle: { color: '#374151', fontSize: 12 }, axisLabel: { rotate: 45, fontSize: AXIS_FONT_PX, color: '#4b5563' }, axisTick: { show: false } },
+      yAxis: { type: axisType, min: loY, max: hiY, name: yFieldName, nameLocation: 'middle', nameGap: 85, nameTextStyle: { color: '#374151', fontSize: 12 }, axisLabel: { fontSize: AXIS_FONT_PX, color: '#4b5563' }, axisTick: { show: false } },
       series: [{ type: 'scatter', data: scatterData, symbolSize: 8, itemStyle: { opacity: 0 }, emphasis: { disabled: true }, z: 2 }, ...blurLimit],
     }
 
@@ -287,7 +290,7 @@ export default function Heatmap2D({
       <div>
         {renderControls()}
         <div style={{ position: 'relative' }}>
-          <ReactECharts key={`blur-${showLimit}-${fontSize}`} option={blurOption} style={{ height, width: '100%' }} opts={{ renderer: 'canvas' }} notMerge />
+          <ReactECharts key={`blur-${showLimit}`} option={blurOption} style={{ height, width: '100%' }} opts={{ renderer: 'canvas' }} notMerge />
           <div style={{ position: 'absolute', left: GRID.left, top: showLimit ? 40 : GRID.top, right: GRID.right, bottom: GRID.bottom, pointerEvents: 'none', overflow: 'hidden' }}>
             <div ref={hmContainerRef} style={{ width: '100%', height: '100%' }} />
           </div>
@@ -314,7 +317,7 @@ export default function Heatmap2D({
     {
       type: 'category', data: xLabels, name: xFieldName, nameLocation: 'middle', nameGap: 55,
       nameTextStyle: { color: '#374151', fontSize: 12 },
-      axisLabel: { rotate: 45, fontSize: fpx.axis, color: '#4b5563', interval: xLabels.length > 30 ? Math.ceil(xLabels.length / 30) : 0 },
+      axisLabel: { rotate: 45, fontSize: AXIS_FONT_PX, color: '#4b5563', interval: xLabels.length > 30 ? Math.ceil(xLabels.length / 30) : 0 },
       axisTick: { show: false }, splitArea: { show: false },
     },
   ]
@@ -322,7 +325,7 @@ export default function Heatmap2D({
     {
       type: 'category', data: yLabels, name: yFieldName, nameLocation: 'middle', nameGap: 85,
       nameTextStyle: { color: '#374151', fontSize: 12 },
-      axisLabel: { fontSize: fpx.axis, color: '#4b5563', interval: yLabels.length > 40 ? Math.ceil(yLabels.length / 40) : 0 },
+      axisLabel: { fontSize: AXIS_FONT_PX, color: '#4b5563', interval: yLabels.length > 40 ? Math.ceil(yLabels.length / 40) : 0 },
       axisTick: { show: false }, splitArea: { show: false },
     },
   ]
@@ -365,7 +368,7 @@ export default function Heatmap2D({
         data: heatData,
         progressive: heatData.length > 3000 ? 1000 : 0,
         progressiveThreshold: 3000,
-        label: { show: showLabels, fontSize: fpx.count, color: '#111827', formatter: (p: any) => String(Math.round(Math.expm1((p.value as any[])[2]))) },
+        label: { show: showLabels, fontSize: countFont, color: '#111827', formatter: (p: any) => String(Math.round(Math.expm1((p.value as any[])[2]))) },
         itemStyle: { borderWidth: 0 },
         emphasis: { itemStyle: { shadowBlur: 6, shadowColor: 'rgba(0,0,0,0.3)' } },
       },
@@ -377,7 +380,7 @@ export default function Heatmap2D({
     <div>
       {renderControls()}
       <ReactECharts
-        key={`${effectiveMode}-${cap}-${density}-${showLimit}-${fontSize}-${xLabels.length}x${yLabels.length}`}
+        key={`${effectiveMode}-${cap}-${density}-${showLimit}-${countFont}-${xLabels.length}x${yLabels.length}`}
         option={option}
         style={{ height, width: '100%' }}
         opts={{ renderer: 'canvas' }}
