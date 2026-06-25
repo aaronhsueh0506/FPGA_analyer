@@ -150,7 +150,7 @@
 
 <header class="doc-header">
   <h1>FPGA Register Analyzer — 系統架構文件</h1>
-  <div class="meta">版本：v0.42.0　|　日期：2026-06-11　|　開發者：Aaron Hsueh</div>
+  <div class="meta">版本：v0.44　|　日期：2026-06-25　|　開發者：Aaron Hsueh</div>
 </header>
 
 <div class="toc">
@@ -533,7 +533,7 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
     <tr><td>9</td><td>白色背景</td><td>§5.1 Layout</td></tr>
     <tr><td>10</td><td>Excel 上傳後另一頁下拉選 + 匯入 dat + 分析按鈕</td><td>§5.3 三步驟流程</td></tr>
     <tr><td>11</td><td>無 AI，分析後寫 csv / excel</td><td>§2 演算法、§7.2 輸出</td></tr>
-    <tr><td>12</td><td>前端檢視結果 + 熱力圖</td><td>§5.4 三 Tab 結果頁</td></tr>
+    <tr><td>12</td><td>前端檢視結果 + 熱力圖</td><td>§5.4 五 Tab 結果頁</td></tr>
     <tr><td>13</td><td>xlsx / dat 對應關係</td><td>§2 已釐清並驗證</td></tr>
     <tr><td>—</td><td>歷史查詢</td><td>§5.2 History、§9.3 流程</td></tr>
   </tbody>
@@ -544,12 +544,11 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
   <thead><tr><th>階段</th><th>內容</th><th>狀態</th></tr></thead>
   <tbody>
     <tr><td>Phase 0</td><td>範例檔分析、對應關係確認</td><td>完成</td></tr>
-    <tr><td>Phase 1–3</td><td>前端骨架、視覺化多 Tab、類型系統</td><td>完成</td></tr>
-    <tr><td>Phase 4</td><td>V-model 詳細設計文件（5 份子文件）</td><td>完成</td></tr>
-    <tr><td>Phase 5–21</td><td>前端 UI 持續微調（見 §13 變更歷程）</td><td>完成</td></tr>
-    <tr><td>後端 API + 分析邏輯</td><td>FastAPI + Python 解析 + SQLite</td><td>待開發</td></tr>
-    <tr><td>前後端串接 + 整合測試</td><td>—</td><td>待開發</td></tr>
-    <tr><td>PyInstaller 打包</td><td>—</td><td>待開發</td></tr>
+    <tr><td>Phase 1</td><td>系統架構文件（本文件 + HTML）</td><td>完成</td></tr>
+    <tr><td>Phase 2</td><td>前端骨架（mock 資料，五個頁面 + sidebar + i18n）</td><td>進行中</td></tr>
+    <tr><td>Phase 3</td><td>後端 API + 分析邏輯</td><td>待開發</td></tr>
+    <tr><td>Phase 4</td><td>前後端串接、整合測試</td><td>待開發</td></tr>
+    <tr><td>Phase 5</td><td>PyInstaller 打包、分發</td><td>待開發</td></tr>
   </tbody>
 </table>
 
@@ -562,7 +561,7 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
   <li><strong>打包成單一執行檔</strong>：用 PyInstaller 把後端打包，前端 build 後當靜態檔 serve。</li>
 </ul>
 
-<h2 id="sec-13">13. 變更歷程</h2>
+<h2 id="sec-13">14. 變更歷程</h2>
 
 <h3>Phase 1 (v0.1) — 基礎骨架</h3>
 <p>五頁面（Dashboard / Registers / Analyze / Results / History）+ 左側 sidebar + i18n（zh-TW / en）+ 版本資訊 Modal。</p>
@@ -684,71 +683,6 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
   <li><strong>i18n</strong>：新增 <code>colRange</code>、<code>rangeDefault</code>、<code>rangePopupTitle</code>、<code>clearRange</code>。</li>
 </ul>
 
-<h3>Phase 42 (v0.42) — Mode Bit Field 片段有效範圍</h3>
-<ul>
-  <li><strong><code>FieldRange</code> 型別擴充</strong>：<code>useBitFieldTypes.ts</code> 新增 <code>segments?: string</code>（原始輸入字串）與 <code>parsedSegments?: [number, number][]</code>（解析後排序非重疊區段）；新增 <code>parseSegments()</code>、<code>isValueInRange()</code>、<code>validValueCount()</code> 三個匯出函式供多元件共用。</li>
-  <li><strong><code>ModeRangePopup</code>（替換 <code>SegmentPopup</code>）</strong>：mode 類 bit field 的有效範圍 popup 統一為：上方 min/max 輸入框，下方「啟用片段範圍」勾選框展開 segment 文字輸入；兩者同時可填，segment 值須落在 min/max 區間內，不符合時即時報錯；儲存時同時寫入 <code>{ min, max, segments, parsedSegments }</code>。</li>
-  <li><strong>驗證邏輯</strong>：<code>parseSegments()</code> 驗證格式（<code>a-b</code> 或 <code>c</code> 以逗號分隔）、數值不超出 bit 寬度、區段 start ≤ end、無重疊；若有 min/max，另外驗證每個 segment 值都在 <code>[min, max]</code> 範圍內；min/max 改變時 segment 驗證即時重算。</li>
-  <li><strong>Overall Panel 更新</strong>：magnitude 涵蓋率分母改用 <code>validValueCount(range, width)</code>；mode 欄位若有 <code>parsedSegments</code>，新增「Mode Segment Coverage」表格（合法片段、有效空間、不同值個數、涵蓋率）；組合分析只計算所有選取欄位值均通過 <code>isValueInRange</code> 的 row，並顯示排除筆數。</li>
-  <li><strong>Histogram 直方圖更新</strong>：<code>Histogram.tsx</code> 新增 <code>allowedValues?: number[]</code> prop；mode 欄位有 <code>parsedSegments</code> 且 maxValue ≤ 20 時，只建立合法位置的 bar，不出現空 bar 佔位；所有直方圖改用 <code>isValueInRange</code> 過濾值。</li>
-</ul>
-<p><strong>主要改動檔案</strong>：<code>useBitFieldTypes.ts</code>、<code>BitFieldTypeModal.tsx</code>、<code>OverallPanel.tsx</code>、<code>StatsPanel.tsx</code>、<code>Histogram.tsx</code>、<code>en.json</code> / <code>zh-TW.json</code>。</p>
-
-<h3>Phase 41 (v0.41) — 值篩選支援多條件 AND</h3>
-<ul>
-  <li>值篩選從單一條件升級為多條件並行（AND 邏輯）；條件清單顯示於工具列下方。</li>
-  <li><code>+ 新增條件</code> 按鈕可加任意數量條件；所有填值且合法的條件同時成立（<code>active.every(...)</code>）。</li>
-  <li>checkbox 旁顯示 <code>(N)</code> 表示目前有效條件數。</li>
-</ul>
-
-<h3>Phase 40 (v0.40) — 結果表格值篩選</h3>
-<ul>
-  <li>表格工具列新增「值篩選」checkbox（預設關閉）；勾選後展開 bit field 下拉與數值輸入框。</li>
-  <li>篩選邏輯 <code>row.values[fieldIdx] === target</code>，與 case range 並行，不互相影響。</li>
-  <li>分頁計數基於篩選後資料；切換欄位或數值時自動 reset 到第 1 頁。</li>
-</ul>
-
-<h3>Phase 39 (v0.39) — TestCase ID 路徑萃取修正</h3>
-<ul>
-  <li><code>extractCaseNumber()</code> 與 <code>extractCaseId()</code> 改用完整路徑掃描：策略 A 找 <code>prefix+數字</code> 元件，策略 B 找 <code>prefix</code> 後接純數字元件。</li>
-  <li>支援 <code>a/speg1/LL0_reg.dat</code>（策略 A）與 <code>a/speg/1/LL0_reg.dat</code>（策略 B）兩種資料夾結構，舊格式 <code>speg1.dat</code> 不受影響。</li>
-</ul>
-
-<h3>Phase 38 (v0.38) — Magnitude 直方圖套用手動設定的上下限</h3>
-<ul>
-  <li><code>StatsPanel.tsx</code> Magnitude 區塊改為讀取 <code>rangeMap</code>（Bit Field 類型設定 modal 的手動上下限）。</li>
-  <li>若有設定 min/max，直方圖 X 軸改用此範圍並過濾超出值；未設定時行為不變（0 ~ 理論最大值）。</li>
-  <li>與 Mode 欄位既有的 <code>rangeMap</code> 邏輯一致。</li>
-</ul>
-
-<h3>Phase 37 (v0.37) — Test Case ID 改從資料夾名稱取得</h3>
-<ul>
-  <li><strong>問題</strong>：<code>.dat</code> 檔名可能不固定（如儀器自動命名），原先從檔名取 <code>{prefix}{id}</code> 會失敗。</li>
-  <li><strong>資料夾命名約定</strong>：每個 test case 放在 <code>speg1/</code>、<code>speg2/</code> 等以 <code>{prefix}{id}</code> 命名的資料夾內，<code>.dat</code> 檔名任意。</li>
-  <li><strong>前端 <code>extractCaseId()</code>（Results.tsx）</strong>：優先對 immediate parent 資料夾名稱做 <code>^{prefix}(\d+)</code> match；無資料夾結構時 fallback 到檔名，向下相容舊批次資料。</li>
-  <li><strong>前後端其餘邏輯不變</strong>：<code>batches.ts</code> 已保留 <code>webkitRelativePath</code>（如 <code>speg1/adc_out.dat</code>），後端 <code>testCase</code> 欄位存入完整相對路徑，無需調整。</li>
-</ul>
-
-<h3>Phase 36 (v0.36) — Bit Field 預設分類規則擴充</h3>
-<ul>
-  <li><strong>Register name 含 INTERRUPT → others</strong>（大小寫不分）：不論 bit field 名稱為何，只要所屬 Register name 含 INTERRUPT 一律歸 others。</li>
-  <li><strong>Token 關鍵字擴充</strong>：以 <code>_</code> 分詞後精確比對，新增 <code>DMA</code>、<code>CYCLE</code>、<code>CHECK</code>、<code>SUM</code>、<code>CHECKSUM</code>、<code>LSB</code>、<code>MSB</code>、<code>DRAM</code>、<code>ADDR</code>、<code>INTERRUPT</code>、<code>INT</code> 為 others 關鍵字。</li>
-  <li><strong>EN/MODE 與 others 關鍵字共存 → others 優先</strong>：EN / ENABLE / MODE 只在不含 others token 時才判為 mode，確保如 <code>DMA_EN</code> 這類名稱歸類正確。</li>
-</ul>
-
-<h3>Phase 35 (v0.35) — 熱力圖 radius 修正</h3>
-<ul>
-  <li>真實資料（27 個量化 Y 值，Y 方向像素間距 ~15px）下，Phase 34 公式算出 radius ≈ 99px（為 Y 間距的 6 倍），所有 blob 完全重疊，全圖一片紅。</li>
-  <li>新公式：<code>radius = min(maxSpacing × 1.2, chartHeight × 8%)</code>，約 32px；相鄰 blob 輕微重疊，密集區（如 X=65 垂直帶）顯著比稀疏區更熱。<code>blur</code> 調降至 0.65。</li>
-</ul>
-
-<h3>Phase 34 (v0.34) — 組合分析顯示修正 + Mode 直方圖範圍篩選 + 熱力圖連續分布</h3>
-<ul>
-  <li><strong>組合分析「其他」列</strong>：<code>#</code> 欄改顯示「其他」翻譯文字，各 register 欄改顯示「—」。</li>
-  <li><strong>Mode 直方圖範圍篩選</strong>：<code>StatsPanel</code> 新增 <code>rangeMap</code> prop；mode 類 bit field 若設有自訂範圍，直方圖只顯示 <code>[effectiveMin, effectiveMax]</code> 內的值，X 軸範圍對齊有效範圍。</li>
-  <li><strong>2D 熱力圖連續分布</strong>：<code>blur</code> 提高至 0.75，<code>radius</code> 放大至 <code>max(spacing × 3, 50)</code>（上限 <code>min(W,H) × 40%</code>），使相鄰 blob 大量重疊，趨近氣象預報式連續色塊效果。</li>
-</ul>
-
 <h3>Phase 31 (v0.31) — 未知 Address 警告改為全批次摘要</h3>
 <ul>
   <li><strong>警告去重邏輯修正</strong>：原本 <code>analyzer.py</code> 中 <code>seen_unknown</code> set 在整個 batch 共用，每個未知 address 只記錄第一個遇到的 dat 檔，導致警告看起來像「只有某一個 test case 有問題」，其實所有 dat 都有相同的未知 address。</li>
@@ -791,6 +725,99 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
   <li><strong>ERR/CHKSUM 預設 others</strong>：<code>defaultBitFieldType()</code> 新增規則，名稱含 <code>ERR</code> 或 <code>CHKSUM</code> 的 bit field 預設歸類為 others。</li>
 </ul>
 
+<h3>Phase 34 (v0.34) — 組合分析顯示修正 + Mode 直方圖範圍篩選 + 熱力圖連續分布調整</h3>
+<ul>
+  <li><strong>組合分析「其他」列顯示修正</strong>：OverallPanel 組合分析表格的「其他 (others)」列，<code>#</code> 欄改顯示「其他」翻譯文字，各 register 欄改顯示「—」，取代原本每欄重複顯示「其他」字樣。</li>
+  <li><strong>Mode 直方圖範圍篩選</strong>：<code>StatsPanel</code> 新增 <code>rangeMap</code> prop；mode 類 bit field 若在「Bit Field 類型設定」中設有自訂範圍（min/max），直方圖只顯示落在 <code>[effectiveMin, effectiveMax]</code> 區間內的值，並將 X 軸範圍對齊有效範圍，排除超出範圍的資料點。<code>Results.tsx</code> 同步傳入 <code>rangeMap</code>。</li>
+  <li><strong>2D 熱力圖連續分布調整</strong>：<code>QUANT_STEP</code> 維持 5；<code>radius</code> 改為 <code>max(spacing × 3, 50)</code> 且上限 <code>min(W,H) × 40%</code>；<code>blur</code> 提高至 0.75，使相鄰 blob 大量重疊，追求氣象預報式連續色塊效果。</li>
+</ul>
+
+<h3>Phase 35 (v0.35) — 熱力圖 radius 修正</h3>
+<p>真實資料（SPE_IN_WIDTH × SPE_IN_HEIGHT，各約 27 個量化值，Y 方向像素間距 ~15px）下，Phase 34 的 radius ≈ 99px（為 Y 間距的 6 倍），造成所有 blob 完全重疊、全圖一片紅。新公式：<code>radius = min(maxSpacing × 1.2, chartHeight × 8%)</code>，約 32px，相鄰 blob 輕微重疊即可，讓密集列（如 X=65 的垂直帶）顯著比稀疏區域更熱。<code>blur</code> 調降至 0.65。</p>
+
+<h3>Phase 43 (v0.43) — 自適應熱力圖 + 散佈圖資源預算分區</h3>
+<p>重做「資料散佈分析」的兩張圖，解決原本 <code>QUANT_STEP=5</code> 寫死量化造成的問題：mode 類小位寬欄位（如 3-bit 值 0..7）被折成只剩 {0,5}；blob 半徑難調，密集離散資料不是糊成一團紅就是縮成孤立點。</p>
+<ul>
+  <li><strong>新增純資料模組 <code>heatmapData.ts</code></strong>：把分箱與自適應邏輯抽成無 React 的純函式。<code>computeAxisStats</code>（相異值/min/max/bitMax）、<code>buildBins</code>（低基數逐值成格、高基數用 <code>{1,2,5}×10^k</code> nice step 量化）、<code>percentileCap</code>（最近排名百分位）、<code>limitCurve</code>（資源上限曲線，可 clamp 到框內供區域填色）、<code>binRange</code>（tooltip 區間字串）。</li>
+  <li><strong><code>Heatmap2D</code> 改用 ECharts 原生 <code>type:'heatmap'</code></strong>：兩種模式——「精準格狀」（每相異值一格、格數少時格內顯示數字）與「平滑模糊」（保留 heatmap.js，半徑用重疊公式 <code>min(maxSpacing×1.2, min(W,H)×8%)</code> 取回 KDE 連續感、<code>minOpacity</code> 0.08 讓稀疏密度可見）。「自動」即精準格狀（已內建自適應，故移除原先重複的「平滑細格」）。</li>
+  <li><strong>對數著色</strong>：cell 顏色用 <code>log1p(count)</code>、visualMap 上限 <code>log1p(cappedMax)</code>，低 count 也清楚可見並與空白(0)區分；移除 cell 邊框消除格線間隙。</li>
+  <li><strong>控制項</strong>：顯示模式（自動/精準格狀/平滑模糊）、密度（自動/較細/較粗/更粗，調 nice-step bin 數）、色階上限（100/95/90/80% 百分位 cap，防極端值洗版）、資源上限線開關。</li>
+  <li><strong>0.5MB 資源上限</strong>：依 <code>W × H × fmt &lt; 500000</code>（fmt = 1/2/4 bytes 對應 8/16/32-bit）。散佈圖以巢狀底色分區呈現（綠/黃/紅，靠原點 = 連 32-bit 都放得下、外圈 = 僅 8-bit、再外 = 超預算）；熱力圖以對齊格線的隱藏 value 副軸疊加同樣三條虛線。</li>
+  <li><strong>X/Y 對調按鈕</strong>：<code>DualRegisterChart</code> 新增按鈕交換 X/Y 欄位，讓大範圍欄位可放到較寬的橫軸，配合圖的寬扁長寬比。</li>
+  <li><strong>曾嘗試後移除</strong>：3D 長條圖（echarts-gl）與 Log 軸刻度切換，實測對此資料觀察無助益，皆已移除。</li>
+</ul>
+<p><strong>主要改動檔案</strong>：<code>heatmapData.ts</code>（新建）、<code>Heatmap2D.tsx</code>（重寫）、<code>Scatter.tsx</code>（資源分區 + 加高 600px + 細格線）、<code>DualRegisterChart.tsx</code>（傳入 bit 寬度 + X/Y 對調）、<code>en.json</code> / <code>zh-TW.json</code>（新增 i18n key）。</p>
+<p><strong>v0.43.1 補充</strong>：熱力圖工具列新增「字體大小」控制（小/中/大/特大，預設「中」≈ 原本外觀）。單一控制同時縮放「格內 count 數字」與「X/Y 軸刻度標籤」字體（軸標題不變），用 <code>FONT_PX</code> 對照表映射到 <code>count</code> / <code>axis</code> 兩個 px 值；設定屬顯示偏好，切換 X/Y 軸或 case 範圍時不重置。</p>
+<p><strong>v0.43.2 補充</strong>：將「字體大小」改為數字 +/− 微調框（可直接輸入，夾在 6–28px，預設 10），且<strong>只作用於格內 count 數字</strong>；X/Y 軸刻度標籤改回固定 10px。另新增「顯示數字」勾選框（預設開）可整個關閉格內數字，關閉時字體微調框 disabled 並變灰。實作上移除 <code>FONT_PX</code> 對照表，改用 <code>COUNT_FONT_MIN/MAX/DEFAULT</code>、<code>AXIS_FONT_PX</code> 常數與 <code>clampFont</code>；新增 <code>showNumbers</code> state 併入 <code>showLabels</code> 判斷與 grid <code>key</code>。</p>
+<p><strong>v0.44 補充</strong>：為「數值 (magnitude)」bit field 新增每欄位的<strong>解讀格式</strong> <code>ValueFormat = 'uint' | 'sint' | 'fp32'</code>，存在 <code>FieldRange.format</code>（沿用 rangeMap → localStorage，每個 register 一份）。後端永遠存 unsigned 原始值，格式只是前端「怎麼解讀」。共用 helper 放在 <code>useBitFieldTypes.ts</code>：<code>interpretValue(raw, width, format)</code>（sint 用二補數、fp32 用 <code>Uint32Array</code>/<code>Float32Array</code> 重解讀，皆以 <code>2 ** w</code> 避免 <code>1&lt;&lt;32</code> 溢位）與 <code>formatBounds(width, format)</code>（uint <code>0~2^w-1</code>、sint <code>-2^(w-1)~2^(w-1)-1</code>）。控制 UI：在 magnitude 的有效範圍彈窗（<code>RangePopup</code>）最上方加一個 <code>&lt;select&gt;</code> 單選（unsigned/signed，<code>width===32</code> 才有 fp32）；選 fp32 時 min/max 輸入 disabled 並清空；signed 時驗證與 <code>&lt;input min/max&gt;</code> 改用 <code>formatBounds</code>，允許負的下限。<strong>套用點</strong>：統計（<code>StatsPanel</code> 先 <code>interpretValue</code> 再算 <code>computeStats</code>、範圍過濾與直方圖；自訂 min/max 或 <code>formatBounds</code> 作為直方圖上下限）、總覽涵蓋率（<code>OverallPanel</code> 解讀後算 min/max/不同值/涵蓋率，理論範圍用 <code>formatBounds</code>，fp32 該欄顯示「FP32」且涵蓋率顯示「—」）、超範圍警告（<code>Results.tsx</code> 與 <code>ResultsTable</code> 高亮判斷比較前先 <code>interpretValue</code>）。<strong>不套用</strong>：主資料表的儲存格數值與 2D 熱力圖/散佈圖維持顯示原始 unsigned 值。圖表元件 <code>Histogram</code> / <code>ValueCurve</code> 介面由 <code>interpretAs</code> 改為 <code>isFloat</code>（值已在上游解讀；整數小值分支改用 <code>minValue</code> 偏移以支援負值），並移除統計分頁內舊的 Int/FP32 切換（連同 i18n <code>interpretInt</code>/<code>interpretFP32</code>/<code>fp32OnlyFor32bit</code>）。另：2D 熱力圖格內字體上限 28 → 40px。</p>
+
+<h3>Phase 42 (v0.42) — Mode Bit Field 片段有效範圍</h3>
+<ul>
+  <li><strong><code>FieldRange</code> 型別擴充</strong>：<code>useBitFieldTypes.ts</code> 的 <code>FieldRange</code> 新增 <code>segments?: string</code>（原始輸入字串）與 <code>parsedSegments?: [number, number][]</code>（解析後的排序非重疊區段陣列）；新增 <code>parseSegments()</code>、<code>isValueInRange()</code>、<code>validValueCount()</code> 三個匯出函式供多元件共用。</li>
+  <li><strong><code>ModeRangePopup</code>（替換 <code>SegmentPopup</code>）</strong>：mode 類 bit field 的有效範圍 popup 改為統一介面——上方為 min/max 輸入框，下方「啟用片段範圍」勾選框展開 segment 文字輸入；兩者同時可填，segment 值須落在 min/max 區間內，不符合時即時顯示錯誤；儲存時同時寫入 <code>{ min, max, segments, parsedSegments }</code>。</li>
+  <li><strong>驗證邏輯</strong>：<code>parseSegments()</code> 驗證格式（<code>a-b</code> 或 <code>c</code> 以逗號分隔）、數值不超出 bit 寬度、區段 start ≤ end、無重疊；若有 min/max，另外驗證每個 segment 值都在 <code>[min, max]</code> 範圍內；min/max 改變時 segment 驗證即時重算。</li>
+  <li><strong>Overall Panel 更新</strong>：magnitude 涵蓋率計算改用 <code>validValueCount(range, width)</code> 作為分母（含 min/max 客製化）；mode 欄位若有 <code>parsedSegments</code>，新增「Mode Segment Coverage」表格（合法片段、有效空間、不同值個數、涵蓋率）；組合分析只計算所有選取欄位值均通過 <code>isValueInRange</code> 的 row，並顯示排除筆數。</li>
+  <li><strong>Histogram 直方圖更新</strong>：<code>Histogram.tsx</code> 新增 <code>allowedValues?: number[]</code> prop；mode 欄位有 <code>parsedSegments</code> 且 maxValue ≤ 20 時，只建立合法位置的 bar（如 <code>0-2, 5, 7-9</code> 只顯示 0/1/2/5/7/8/9，不出現空 bar 佔位）；所有直方圖改用 <code>isValueInRange</code> 過濾值，不再受限於 min/max 連續區間。</li>
+</ul>
+<p><strong>主要改動檔案</strong>：<code>useBitFieldTypes.ts</code>（資料模型 + 輔助函式）、<code>BitFieldTypeModal.tsx</code>（ModeRangePopup）、<code>OverallPanel.tsx</code>（覆蓋率 + Mode Segment Coverage + 組合過濾）、<code>StatsPanel.tsx</code>（histogram 過濾）、<code>Histogram.tsx</code>（allowedValues）、<code>en.json</code> / <code>zh-TW.json</code>（新增 segment 相關 i18n key）。</p>
+
+<h3>Phase 41 (v0.41) — 值篩選支援多條件 AND</h3>
+<p>將值篩選從單一條件升級為多條件並行（AND 邏輯）：</p>
+<ul>
+  <li>工具列 checkbox 開啟後，工具列下方展開條件清單（欄位下拉 + <code>=</code> + 數值輸入 + <code>×</code> 移除）。</li>
+  <li><code>+ 新增條件</code> 按鈕可新增任意數量條件；條件數 &gt; 1 時才顯示 <code>×</code> 移除按鈕。</li>
+  <li>篩選邏輯：所有「已填值且合法」的條件同時成立（<code>active.every(...)</code>），空值條件自動略過。</li>
+  <li>checkbox 旁以 <code>(N)</code> 顯示目前有效條件數。</li>
+</ul>
+<p><strong>改動檔案</strong>：<code>frontend/src/components/results/ResultsTable.tsx</code>（<code>filterConditions</code> array state + <code>addCondition / removeCondition / updateCondition</code> helpers + 條件清單 JSX）；i18n 新增 <code>results.valueFilterAdd</code>。</p>
+
+<h3>Phase 40 (v0.40) — 結果表格值篩選</h3>
+<p>表格工具列新增「值篩選」功能（預設關閉）：</p>
+<ul>
+  <li>工具列加入 checkbox 開關（預設 unchecked）；勾選後展開 bit field 下拉選單與數值輸入框。</li>
+  <li>篩選邏輯：<code>row.values[selectedFieldIdx] === target</code>，只顯示符合條件的行。</li>
+  <li>分頁計數、上下頁、跳頁全部基於篩選後資料，不影響 case range 過濾（兩者並行）。</li>
+  <li>切換欄位或數值時自動 reset 到第 1 頁。</li>
+</ul>
+<p><strong>改動檔案</strong>：<code>frontend/src/components/results/ResultsTable.tsx</code>（<code>filterEnabled / filterFieldIdx / filterRawValue</code> state + <code>filteredRows</code> useMemo + toolbar UI）；i18n 新增 <code>results.valueFilter</code>。</p>
+
+<h3>Phase 39 (v0.39) — TestCase ID 路徑萃取修正</h3>
+<p><code>extractCaseNumber()</code>（<code>ResultsTable.tsx</code>）與 <code>extractCaseId()</code>（<code>Results.tsx</code>）改用完整路徑掃描演算法，同時支援兩種目錄結構：</p>
+<ul>
+  <li><strong>策略 A</strong>：任一路徑元件符合 <code>^{prefix}(\d+)</code>（如 <code>a/speg1/LL0_reg.dat</code> → <code>#1</code>）</li>
+  <li><strong>策略 B</strong>：路徑元件完全等於 prefix 且下一元件為純數字（如 <code>a/speg/1/LL0_reg.dat</code> → <code>#1</code>）</li>
+  <li>Fallback：顯示檔名（向下相容舊格式）</li>
+</ul>
+<p>舊格式 <code>speg1.dat</code> 仍正常（策略 A 命中檔名元件）。</p>
+<p><strong>改動檔案</strong>：<code>frontend/src/components/results/ResultsTable.tsx</code>（<code>extractCaseNumber</code>）、<code>frontend/src/pages/Results.tsx</code>（<code>extractCaseId</code>）。</p>
+
+<h3>Phase 38 (v0.38) — Magnitude 直方圖套用手動設定的上下限</h3>
+<p><code>StatsPanel.tsx</code> 的 Magnitude 區塊改為讀取 <code>rangeMap</code>（Bit Field 類型設定 modal 中手動填寫的上下限）：</p>
+<ul>
+  <li>若 <code>rangeMap[bf.name]</code> 有設定 <code>min</code> 或 <code>max</code>，直方圖 X 軸改用此範圍（<code>minValue</code> / <code>maxValue</code> 傳入 <code>Histogram</code>），並過濾超出範圍的資料點。</li>
+  <li>未設定時行為不變（X 軸為 0 ~ 理論最大值）。</li>
+  <li>此行為與 Mode 欄位的既有邏輯一致（Mode 自 Phase 早期即已套用 <code>rangeMap</code>）。</li>
+</ul>
+<p><strong>改動檔案</strong>：<code>frontend/src/components/results/StatsPanel.tsx</code>（Magnitude map callback，加入 <code>r / effectiveMin / effectiveMax / hasRange / values</code> 計算，與 Mode 區塊平行）。</p>
+
+<h3>Phase 37 (v0.37) — Test Case ID 改從資料夾名稱取得</h3>
+<p><code>extractCaseId()</code> 函式（<code>Results.tsx</code>）邏輯調整：優先從 <code>testCase</code> 字串的 <strong>immediate parent 資料夾名稱</strong> 取 ID，無資料夾結構時 fallback 到檔名。</p>
+<ul>
+  <li>適用場景：<code>.dat</code> 檔名不固定，但放在命名為 <code>{prefix}{id}/</code> 的資料夾內（如 <code>speg1/adc_out.dat</code>）。</li>
+  <li>前端上傳邏輯（<code>batches.ts</code>）已於先前版本保留 <code>webkitRelativePath</code>，後端 <code>testCase</code> 欄位存入完整相對路徑（如 <code>speg1/adc_out.dat</code>）。</li>
+  <li>前端解析：取最後一個 <code>/</code> 前的最後一段路徑（immediate parent），對 <code>^{prefix}(\d+)</code> 做 match；若失敗再對檔名做 match（向下相容舊批次資料）。</li>
+</ul>
+<p><strong>後端邏輯</strong>：上傳時 <code>fname = upload.filename</code>，analyzer 直接以此作為 <code>testCase</code>，無需更動。</p>
+
+<h3>Phase 36 (v0.36) — Bit Field 預設分類規則擴充</h3>
+<p><code>defaultBitFieldType()</code> 新增以下 others 判斷規則：</p>
+<ol>
+  <li><strong>Register name 含 <code>INTERRUPT</code></strong>（大小寫不分）→ others，不論 bit field 名稱為何。</li>
+  <li><strong>Token 關鍵字</strong>（以 <code>_</code> 分詞後精確比對）：<code>DMA</code>、<code>CYCLE</code>、<code>CHECK</code>、<code>SUM</code>、<code>CHECKSUM</code>、<code>LSB</code>、<code>MSB</code>、<code>DRAM</code>、<code>ADDR</code>、<code>INTERRUPT</code>、<code>INT</code> → others。</li>
+  <li><strong>EN/ENABLE/MODE 與上述 others 關鍵字同時出現 → others 優先</strong>（EN/ENABLE/MODE 只有在不含 others token 時才判為 mode）。</li>
+</ol>
+<p>既有規則（ERR / CHKSUM → others；EN / ENABLE / MODE → mode；其餘 → magnitude）保持不變，納入新的優先序。</p>
+
 <blockquote style="margin-top: 32px;">
   <strong>延伸閱讀 — 系統詳細設計</strong><br>
   本文件為高階「系統架構」（what &amp; why）。詳細元件分解、序列圖、資料流圖、狀態圖、API contract、演算法偽程式碼請見：
@@ -803,7 +830,7 @@ GET /api/batches/{id} 取得結果 JSON → 渲染表格 / 熱力圖</div>
 </blockquote>
 
 <footer>
-  FPGA Register Analyzer　|　v0.42.0　|　Aaron Hsueh　|　2026-06-11
+  FPGA Register Analyzer　|　v0.44　|　Aaron Hsueh　|　2026-06-25
 </footer>
 
 </body>

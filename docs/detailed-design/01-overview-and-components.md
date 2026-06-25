@@ -1,6 +1,6 @@
 # FPGA Register Analyzer — 系統詳細設計
 
-> 版本：v0.4.0　|　[← 回索引](index.md)　|　（首份）　·　[下一份：資料模型與介面 →](02-data-and-interfaces.md)
+> 版本：v0.44　|　日期：2026-06-25　|　開發者：Aaron Hsueh　|　[← 回索引](index.md)　|　（首份）　·　[下一份：資料模型與介面 →](02-data-and-interfaces.md)
 
 本份內容簡述：1-2 章，引言與元件分解。涵蓋 V-Model 階層位置、與架構文件的關係、前端 React 元件樹、前端目錄結構與後端服務分層。
 
@@ -79,9 +79,15 @@ graph TD
 
     StatsPanel --> HistogramMode[Histogram<br/>mode]
     StatsPanel --> HistogramMag[Histogram<br/>magnitude]
+    StatsPanel --> ValueCurve[ValueCurve<br/>magnitude 詳細曲線]
+
+    BitFieldTypeModal --> RangePopup[RangePopup<br/>magnitude 有效範圍<br/>format select]
+    BitFieldTypeModal --> ModeRangePopup[ModeRangePopup<br/>mode 有效範圍 + segments]
 
     OverallPanel --> HistogramOverall[基本摘要<br/>類型分佈<br/>Range 涵蓋率<br/>組合分析]
 ```
+
+> **v0.44 元件樹補充**：`BitFieldTypeModal` 內含兩個 popup 子元件——`RangePopup`（magnitude 欄位有效範圍）與 `ModeRangePopup`（mode 欄位有效範圍 + segments）。`RangePopup` 最上方新增一個 `<select>` 單選下拉，用於選擇該欄位的**解讀格式**（Unsigned / Signed；當 `width === 32` 時額外出現 FP32）。`StatsPanel` 除 mode / magnitude 兩種 `Histogram` 外，magnitude 卡片底部「詳細曲線」展開後會渲染 `ValueCurve`。`Histogram` 與 `ValueCurve` 的介面在 v0.44 由 `interpretAs:'int'|'fp32'` 改為 `isFloat:boolean`（值已在上游 `StatsPanel` / `OverallPanel` 先以 `interpretValue` 解讀），同時移除了統計分頁內舊的 Int / FP32 切換按鈕。
 
 ### 2.2 前端目錄結構（實作後）
 
@@ -94,7 +100,7 @@ frontend/src/
 │   ├── zh-TW.json
 │   └── en.json
 ├── hooks/
-│   └── useBitFieldTypes.ts      # localStorage 包裝
+│   └── useBitFieldTypes.ts      # localStorage 包裝 + 共用 helper（interpretValue / formatBounds 等）
 ├── mock/
 │   └── data.ts                  # 開發用 mock 資料
 ├── styles/
@@ -107,7 +113,9 @@ frontend/src/
 │   ├── charts/
 │   │   ├── Heatmap2D.tsx        # 兩 register 2D 熱力圖
 │   │   ├── Scatter.tsx          # 兩 register 散佈圖
-│   │   └── Histogram.tsx        # 直方圖
+│   │   ├── Histogram.tsx        # 直方圖（isFloat prop）
+│   │   ├── ValueCurve.tsx       # magnitude 詳細曲線（isFloat prop）
+│   │   └── heatmapData.ts       # 熱力圖純資料模組（分箱 / 自適應）
 │   └── results/
 │       ├── ResultsTable.tsx
 │       ├── DualRegisterChart.tsx
@@ -122,6 +130,17 @@ frontend/src/
     ├── Results.tsx              # 容器：Tab 切換 + 共用 state
     └── History.tsx
 ```
+
+> **v0.44 `useBitFieldTypes.ts` 共用 helper**：此 hook 除了包裝 localStorage（每個 register 一份的 `TypeMap` 與 `RangeMap`）外，另對外匯出多個被多個元件共用的純函式：
+>
+> - `interpretValue(raw, width, format)`：把後端存的 unsigned 原始值依欄位 `format` 解讀為實際數值。`sint` 用二補數（`raw >= 2^(w-1) ? raw - 2^w : raw`）；`fp32` 用 `Uint32Array` / `Float32Array` 重新解讀 32-bit 位元樣式為浮點；`uint`（預設）原樣回傳。
+> - `formatBounds(width, format)`：依格式回傳理論上下限——`uint` 為 `0 ~ 2^w-1`、`sint` 為 `-2^(w-1) ~ 2^(w-1)-1`；fp32 沿用 unsigned 界線。所有上限計算皆以 `2 ** w`（而非 `1 << w`）避免 width=31 / 32 時的 32-bit 有號位移溢位。
+> - `validValueCount(range, width)`：涵蓋率分母，v0.44 起改為 format-aware（未自訂的那一端改用 `formatBounds` 預設，signed 下限為負）。
+> - 既有 `parseSegments` / `isValueInRange` 維持不變。
+>
+> `FieldRange` 型別新增 `format?: ValueFormat`（`'uint' | 'sint' | 'fp32'`），隨 `RangeMap` 一併存入 localStorage。後端**永遠**存 unsigned 原始值，`format` 只改變前端的解讀方式。
+>
+> **套用點**（皆在比較 / 統計前先呼叫 `interpretValue`）：`StatsPanel`（先解讀再 `computeStats` / 範圍過濾 / 直方圖）、`OverallPanel`（解讀後算 min/max/不同值/涵蓋率，理論範圍用 `formatBounds`）、超範圍警告（`Results.tsx` 與 `ResultsTable` 高亮判斷）。**不套用**：主資料表儲存格與 2D 熱力圖 / 散佈圖，維持顯示原始 unsigned 值。
 
 ### 2.3 後端服務分層（規劃中）
 

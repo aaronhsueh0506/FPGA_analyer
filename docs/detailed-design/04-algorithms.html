@@ -187,7 +187,7 @@
 
 <header class="doc-header">
   <h1>FPGA Register Analyzer — 系統詳細設計</h1>
-  <div class="meta">版本：v0.4.0　|　第 4 份：演算法詳述　|　<a href="index.html">← 回索引</a></div>
+  <div class="meta">版本：v0.44　|　日期：2026-06-25　|　開發者：Aaron Hsueh　|　第 4 份：演算法詳述　|　<a href="index.html">← 回索引</a></div>
 </header>
 
 <nav class="nav-bar">
@@ -255,7 +255,56 @@ FOR addr in addr_value_map:
   IF addr not in registers:
     warnings.append("Unknown address: {addr}")</code></pre>
 
-<h3>8.2 組合分析 Top-N</h3>
+<h3>8.2 值解讀格式（Value Interpretation，v0.44）</h3>
+
+<p>後端永遠儲存 unsigned 原始整數；<strong>前端</strong>才依每個 magnitude bit field 的「解讀格式」<code>format ∈ {uint, sint, fp32}</code>（存於 <code>FieldRange.format</code> → rangeMap → localStorage，每個 register 一份）把原始值轉成實際數值。helper 定義於 <code>useBitFieldTypes.ts</code>。</p>
+
+<pre><code># interpretValue：把 unsigned 原始值依格式解讀成實際數值
+INPUT:
+  raw    : int     # 後端的 unsigned 原始值
+  width  : int     # bit field 位寬
+  format : 'uint' | 'sint' | 'fp32'   # 預設 uint
+OUTPUT:
+  value : number   # sint 可為負；fp32 為浮點
+
+FUNCTION interpretValue(raw, width, format):
+  IF format == 'sint':
+    w := min(width, 32)
+    signBit := 2 ** (w - 1)            # 用 2**w，避免 w=32 時 1&lt;&lt;31 溢位
+    # 二補數：最高位為 1 代表負值，減去 2^w 還原
+    RETURN raw &gt;= signBit ? raw - 2 ** w : raw
+
+  IF format == 'fp32':
+    # IEEE-754 重新解讀：同一段 32-bit pattern 直接當 float32 讀出
+    buf := new ArrayBuffer(4)
+    new Uint32Array(buf)[0] := raw &gt;&gt;&gt; 0    # 寫入 unsigned 32-bit pattern
+    RETURN new Float32Array(buf)[0]         # 以 float32 讀出
+
+  RETURN raw                            # uint：原樣返回</code></pre>
+
+<blockquote><strong>溢位陷阱（v0.44 修正）</strong>：JavaScript 的位元運算（<code>&lt;&lt;</code>）以 <strong>32-bit signed</strong> 進行。<code>width = 31</code> 時 <code>1 &lt;&lt; 31</code> 會溢位成負數 <code>-2147483648</code>，使理論最大 <code>(1 &lt;&lt; 31) - 1</code> 變成負值，下游 <code>new Array(size)</code> 因負長度而拋出 <code>Array length must be a positive integer</code> 導致統計頁崩潰。因此所有界線運算一律改用 <code>2 ** w</code>（浮點冪次，無 32-bit 溢位）：<code>formatBounds</code>、<code>validValueCount</code>、<code>computeBitMax</code>、<code>safeMaxValue</code>、<code>heatmapData</code> 與 mock 資料皆已切換。</blockquote>
+
+<h3>8.3 格式感知理論界線（formatBounds，v0.44）</h3>
+
+<p><code>formatBounds(width, format)</code> 回傳該欄位在「解讀後數值域」的理論上下限，供直方圖座標範圍、範圍輸入框 min/max 限制、超範圍驗證與涵蓋率分母使用。</p>
+
+<pre><code>INPUT:
+  width  : int
+  format : 'uint' | 'sint' | 'fp32'
+OUTPUT:
+  { min, max }
+
+FUNCTION formatBounds(width, format):
+  IF format == 'sint':
+    w := min(width, 32)
+    RETURN { min: -(2 ** (w - 1)), max: 2 ** (w - 1) - 1 }   # 例：8-bit → -128 ~ 127
+  # uint 與 fp32（fp32 無整數界線，沿用 unsigned 界線）
+  max := width &gt;= 32 ? 0xFFFFFFFF : (2 ** width) - 1          # 用 2**w，避免 width=31 時 1&lt;&lt;31 溢位成負數
+  RETURN { min: 0, max }</code></pre>
+
+<p>UI：magnitude 的有效範圍彈窗（<code>RangePopup</code>）最上方有單選 <code>&lt;select&gt;</code>（Unsigned / Signed；<code>width === 32</code> 才出現 FP32）。選 FP32 時 min/max 輸入框 disabled 並清空；選 Signed 時驗證與 <code>&lt;input min/max&gt;</code> 改用 <code>formatBounds</code>，允許負的有效範圍下限。</p>
+
+<h3>8.4 組合分析 Top-N</h3>
 
 <pre><code>INPUT:
   rows : List[{ testCase, values[] }]
@@ -277,53 +326,120 @@ return arr.map(entry =&gt; {
   percent: entry.count / total * 100
 })</code></pre>
 
-<h3>8.3 Range 涵蓋率計算（Overall Tab）</h3>
+<h3>8.5 Range 涵蓋率計算（Overall Tab，v0.44 格式感知）</h3>
+
+<p>涵蓋率改為「<strong>先解讀</strong>、<strong>再算</strong>」：每個值先過 <code>interpretValue</code>（signed 可為負、fp32 為浮點），理論範圍改用 <code>formatBounds</code>，涵蓋率分母改用格式感知的 <code>validValueCount</code>（見下）。fp32 欄位無整數界線，理論範圍欄顯示「FP32」、涵蓋率欄顯示「—」。</p>
 
 <pre><code>INPUT:
   bitFields : List[BitFieldDef]
   types     : TypeMap                # 標 'magnitude' 的才算
   rows      : List[Row]
+  rangeMap  : RangeMap               # 每欄位的 format / 自訂 min/max
 OUTPUT:
-  coverage : List[{ name, width, theoMax, actMin, actMax, unique, pct }]
+  coverage : List[{ name, width, format, bitMin, bitMax,
+                    effMin, effMax, actMin, actMax, unique, pct }]
 
 result := []
 FOR each bf in bitFields:
   IF types[bf.name] ≠ 'magnitude': continue
 
-  vals := rows.map(r =&gt; r.values[indexOf bf])
-  theoMax := IF bf.width == 32 THEN 0xFFFFFFFF ELSE (1 &lt;&lt; bf.width) - 1
-  actMin := min(vals)
-  actMax := max(vals)
-  unique := new Set(vals).size
-  pct := IF theoMax &gt; 0 THEN (actMax - actMin) / theoMax * 100 ELSE 0
+  fr     := rangeMap[bf.name]
+  format := fr.format OR 'uint'
+  bounds := formatBounds(bf.width, format)        # 格式感知理論界線
+  bitMin := bounds.min ; bitMax := bounds.max
+  effMin := fr.min ≠ NULL ? fr.min : bitMin       # 使用者自訂值優先
+  effMax := fr.max ≠ NULL ? fr.max : bitMax
 
-  result.append({ name: bf.name, width: bf.width,
-                  theoMax, actMin, actMax, unique, pct })
+  actMin := +∞ ; actMax := −∞ ; uniqInRange := Set{}
+  FOR each row in rows:
+    raw := row.values[indexOf bf]
+    IF raw is not number: continue
+    v := interpretValue(raw, bf.width, format)     # 先解讀
+    actMin := min(actMin, v) ; actMax := max(actMax, v)
+    IF isValueInRange(v, fr): uniqInRange.add(v)
+
+  refSpan := validValueCount(fr, bf.width)         # 格式感知分母
+  pct := refSpan &gt; 0 ? uniqInRange.size / refSpan * 100 : 0
+  # fp32 欄位：理論範圍顯示 "FP32"、pct 顯示 "—"
+
+  result.append({ name: bf.name, width: bf.width, format,
+                  bitMin, bitMax, effMin, effMax,
+                  actMin, actMax, unique: uniqInRange.size, pct })
 
 return result</code></pre>
 
-<h3>8.4 Histogram 自動分箱</h3>
+<pre><code># validValueCount：涵蓋率分母（合法值個數），v0.44 格式感知
+INPUT:
+  range : FieldRange | undefined     # 含 format / min / max / parsedSegments
+  width : int
+OUTPUT:
+  count : int
+
+FUNCTION validValueCount(range, width):
+  bounds := formatBounds(width, range.format)       # 未自訂的那一端用格式預設
+  IF range.parsedSegments 非空:                     # 片段範圍：各段長度相加
+    RETURN Σ (hi - lo + 1) over parsedSegments
+  lo := range.min ≠ NULL ? range.min : bounds.min   # signed 預設下限為負，避免用 0 算錯
+  hi := range.max ≠ NULL ? range.max : bounds.max
+  RETURN max(0, hi - lo + 1)</code></pre>
+
+<h3>8.6 Histogram 自動分箱（v0.44 含 minValue 偏移與 fp32 路徑）</h3>
+
+<p>輸入的 <code>values</code> <strong>已在上游（StatsPanel）依格式解讀</strong>，所以可能含負值（signed）或浮點（fp32）。圖表元件以 <code>isFloat</code> 旗標（取代舊的 <code>interpretAs</code>）選擇分箱路徑；整數小值分支改用 <code>minValue</code> 偏移，讓 signed 負值也能正確落格。</p>
 
 <pre><code>INPUT:
-  values : number[]
-  maxValue : number
+  values   : number[]    # 已解讀；signed 可為負、fp32 為浮點
+  minValue : number      # 解讀後數值域下限（signed 可為負）
+  maxValue : number      # 解讀後數值域上限
+  isFloat  : bool        # fp32 為 true
+  allowedValues? : number[]   # mode 片段範圍時，只建合法位置的 bar
 OUTPUT:
   bins : List[{ label, count }]
+BIN_COUNT := 20
 
-IF maxValue ≤ 20:
-  # 離散：每個整數一個 bin
-  bins := for v from 0 to maxValue:
-            { label: v, count: count of v in values }
+# 路徑 1：fp32 浮點 — 以實際 finite 值的 min/max 等寬切 20 桶
+IF isFloat:
+  finite := values where isFinite(v)
+  IF finite 為空: RETURN [{ label: "NaN/Inf", count: values.length }]
+  fMin := min(finite) ; fMax := max(finite)
+  fRange := (fMax - fMin) OR 1
+  step := fRange / BIN_COUNT
+  bins := for i from 0 to BIN_COUNT-1:
+            lo := fMin + step*i
+            hi := i == BIN_COUNT-1 ? fMax : fMin + step*(i+1)
+            { label: "{fmtFloat(lo)}~{fmtFloat(hi)}", count: 0 }
+  FOR each f in values where isFinite(f):
+    idx := clamp(floor((f - fMin) / fRange * BIN_COUNT), 0, BIN_COUNT-1)
+    bins[idx].count += 1
+  RETURN bins
+
+# 路徑 2：整數離散小值（含 minValue 偏移，支援負值）
+ELSE IF maxValue ≥ minValue AND (maxValue - minValue) ≤ 20:
+  IF allowedValues 非空:                  # mode 片段：只建合法值的 bar
+    bins := allowedValues.map(v =&gt; { label: str(v), count: 0 })
+    FOR each v in values: 命中 allowedValues 的位置 += 1
+  ELSE:
+    size := maxValue - minValue + 1       # span 已由 minValue 偏移保證為正
+    bins := for i from 0 to size-1: { label: str(minValue + i), count: 0 }
+    FOR each v in values:
+      idx := clamp(v - minValue, 0, size - 1)   # 以 minValue 為原點，負值也正確落格
+      bins[idx].count += 1
+  RETURN bins
+
+# 路徑 3：整數連續大範圍 — 以 [minValue, maxValue] 等寬切 20 桶
 ELSE:
-  # 連續：分 20 bins
-  binSize := ceil((maxValue + 1) / 20)
-  bins := for i from 0 to 19:
-            lo := i * binSize
-            hi := min((i+1) * binSize - 1, maxValue)
-            { label: "{lo}-{hi}",
-              count: count(v in values where lo ≤ v ≤ hi) }
+  range := (maxValue - minValue) OR 1
+  step := range / BIN_COUNT
+  bins := for i from 0 to BIN_COUNT-1:
+            lo := minValue + step*i
+            hi := i == BIN_COUNT-1 ? maxValue : minValue + step*(i+1)
+            { label: "{round(lo)}-{round(hi)}", count: 0 }
+  FOR each v in values:
+    idx := clamp(floor((v - minValue) / range * BIN_COUNT), 0, BIN_COUNT-1)
+    bins[idx].count += 1
+  RETURN bins</code></pre>
 
-return bins</code></pre>
+<blockquote>StatsPanel 上游決定 <code>minValue</code> / <code>maxValue</code>：有自訂範圍時用 <code>fr.min</code> / <code>fr.max</code>，否則用 <code>formatBounds(width, format)</code> 的下/上限（signed 下限為負）。fp32 欄位另傳 <code>isFloat = true</code>。直方圖前的值已先過 <code>interpretValue</code> 與 <code>isValueInRange</code> 過濾。</blockquote>
 
 <nav class="nav-bar">
   <a href="03-dynamics.html">← 上一份：動態行為</a>
@@ -332,7 +448,7 @@ return bins</code></pre>
 </nav>
 
 <footer>
-  FPGA Register Analyzer Detailed Design — Part 4　|　v0.4.0　|　Aaron Hsueh
+  FPGA Register Analyzer Detailed Design — Part 4　|　v0.44　|　Aaron Hsueh
 </footer>
 
 </body>

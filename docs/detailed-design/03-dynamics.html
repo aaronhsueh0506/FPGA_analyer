@@ -187,7 +187,7 @@
 
 <header class="doc-header">
   <h1>FPGA Register Analyzer — 系統詳細設計</h1>
-  <div class="meta">版本：v0.4.0　|　第 3 份：動態行為（序列圖 / 資料流 / 狀態圖）　|　<a href="index.html">← 回索引</a></div>
+  <div class="meta">版本：v0.44　|　日期：2026-06-25　|　開發者：Aaron Hsueh　|　第 3 份：動態行為（序列圖 / 資料流 / 狀態圖）　|　<a href="index.html">← 回索引</a></div>
 </header>
 
 <nav class="nav-bar">
@@ -427,6 +427,24 @@ graph TB
     OP --> R4[計算:<br/>typeCounts<br/>rangeCoverage<br/>combinations]
 </pre>
 
+<h3>6.6 DF-6：數值解讀格式 (ValueFormat) 資料流（v0.44）</h3>
+
+<blockquote>後端永遠儲存 unsigned 原始整數；<code>FieldRange.format</code>（<code>uint</code> / <code>sint</code> / <code>fp32</code>，存於 rangeMap → localStorage，每個 register 一份）只改變<strong>前端怎麼解讀</strong>這個原始值。共用 helper <code>interpretValue(raw, width, format)</code> 與 <code>formatBounds(width, format)</code> 定義於 <code>useBitFieldTypes.ts</code>。注意：主資料表儲存格與 2D 熱力圖／散佈圖<strong>不</strong>經過解讀，維持顯示原始 unsigned 值。</blockquote>
+
+<pre class="mermaid">
+graph TB
+    RAW[Raw unsigned int<br/>row.values i<br/>後端原始值] --> FMT{FieldRange.format<br/>uint / sint / fp32}
+
+    FMT --> IV["interpretValue(raw,width,format)<br/>sint = 二補數<br/>raw≥2^(w-1) ? raw-2^w : raw<br/>fp32 = Uint32→Float32 重解讀"]
+
+    IV --> SP[StatsPanel<br/>computeStats<br/>範圍過濾 + 直方圖<br/>bounds = formatBounds 或自訂 min/max]
+    IV --> OP[OverallPanel<br/>min/max/不同值/涵蓋率<br/>理論範圍 = formatBounds<br/>fp32 顯示 FP32、涵蓋率 —]
+    IV --> OOR[超範圍警告<br/>Results.tsx outOfRangeWarnings<br/>+ ResultsTable 紅色高亮<br/>比較前先解讀]
+
+    RAW -.不解讀.-> TBL[主資料表儲存格<br/>ResultsTable 顯示<br/>原始 unsigned]
+    RAW -.不解讀.-> HM[2D 熱力圖 / 散佈圖<br/>Heatmap2D / Scatter<br/>原始 unsigned]
+</pre>
+
 <h2 id="sec-7">7. 狀態圖 (State Diagrams)</h2>
 
 <h3>7.1 ST-1：Analyze 頁三步驟狀態機</h3>
@@ -535,7 +553,7 @@ stateDiagram-v2
 </nav>
 
 <footer>
-  FPGA Register Analyzer Detailed Design — Part 3　|　v0.4.0　|　Aaron Hsueh
+  FPGA Register Analyzer Detailed Design — Part 3　|　v0.44　|　日期：2026-06-25　|　Aaron Hsueh
 </footer>
 
 </body>

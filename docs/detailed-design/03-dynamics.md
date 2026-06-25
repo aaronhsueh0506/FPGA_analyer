@@ -1,8 +1,8 @@
 # FPGA Register Analyzer — 系統詳細設計
 
-> 版本：v0.4.0　|　[← 回索引](index.md)　|　[← 上一份：資料模型與介面](02-data-and-interfaces.md)　·　[下一份：演算法 →](04-algorithms.md)
+> 版本：v0.44　|　日期：2026-06-25　|　開發者：Aaron Hsueh　|　[← 回索引](index.md)　|　[← 上一份：資料模型與介面](02-data-and-interfaces.md)　·　[下一份：演算法 →](04-algorithms.md)
 
-本份內容簡述：5-7 章，動態行為。涵蓋 6 個序列圖、5 個資料流圖與 4 個狀態圖。
+本份內容簡述：5-7 章，動態行為。涵蓋 6 個序列圖、6 個資料流圖與 4 個狀態圖。
 
 ---
 
@@ -237,6 +237,24 @@ graph TB
     DR --> R2[本地 state:<br/>xIdx, yIdx, view]
     SP --> R3[計算:<br/>computeStats<br/>分類 mode/mag]
     OP --> R4[計算:<br/>typeCounts<br/>rangeCoverage<br/>combinations]
+```
+
+### 6.6 DF-6：數值解讀格式 (ValueFormat) 資料流（v0.44）
+
+> 後端永遠儲存 unsigned 原始整數；`FieldRange.format`（`uint` / `sint` / `fp32`，存於 rangeMap → localStorage，每個 register 一份）只改變**前端怎麼解讀**這個原始值。共用 helper `interpretValue(raw, width, format)` 與 `formatBounds(width, format)` 定義於 `useBitFieldTypes.ts`。注意：主資料表儲存格與 2D 熱力圖／散佈圖**不**經過解讀，維持顯示原始 unsigned 值。
+
+```mermaid
+graph TB
+    RAW[Raw unsigned int<br/>row.values i<br/>後端原始值] --> FMT{FieldRange.format<br/>uint / sint / fp32}
+
+    FMT --> IV["interpretValue(raw,width,format)<br/>sint = 二補數<br/>raw≥2^(w-1) ? raw-2^w : raw<br/>fp32 = Uint32→Float32 重解讀"]
+
+    IV --> SP[StatsPanel<br/>computeStats<br/>範圍過濾 + 直方圖<br/>bounds = formatBounds 或自訂 min/max]
+    IV --> OP[OverallPanel<br/>min/max/不同值/涵蓋率<br/>理論範圍 = formatBounds<br/>fp32 顯示 FP32、涵蓋率 —]
+    IV --> OOR[超範圍警告<br/>Results.tsx outOfRangeWarnings<br/>+ ResultsTable 紅色高亮<br/>比較前先解讀]
+
+    RAW -.不解讀.-> TBL[主資料表儲存格<br/>ResultsTable 顯示<br/>原始 unsigned]
+    RAW -.不解讀.-> HM[2D 熱力圖 / 散佈圖<br/>Heatmap2D / Scatter<br/>原始 unsigned]
 ```
 
 ---

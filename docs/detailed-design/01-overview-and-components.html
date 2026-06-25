@@ -187,7 +187,7 @@
 
 <header class="doc-header">
   <h1>FPGA Register Analyzer — 系統詳細設計</h1>
-  <div class="meta">版本：v0.4.0　|　第 1 份：概述與元件分解　|　<a href="index.html">← 回索引</a></div>
+  <div class="meta">版本：v0.44　|　日期：2026-06-25　|　開發者：Aaron Hsueh　|　第 1 份：概述與元件分解　|　<a href="index.html">← 回索引</a></div>
 </header>
 
 <nav class="nav-bar">
@@ -267,9 +267,17 @@ graph TD
 
     StatsPanel --> HistogramMode[Histogram<br/>mode]
     StatsPanel --> HistogramMag[Histogram<br/>magnitude]
+    StatsPanel --> ValueCurve[ValueCurve<br/>magnitude 詳細曲線]
+
+    BitFieldTypeModal --> RangePopup[RangePopup<br/>magnitude 有效範圍<br/>format select]
+    BitFieldTypeModal --> ModeRangePopup[ModeRangePopup<br/>mode 有效範圍 + segments]
 
     OverallPanel --> HistogramOverall[基本摘要<br/>類型分佈<br/>Range 涵蓋率<br/>組合分析]
 </pre>
+
+<blockquote>
+  <p><strong>v0.44 元件樹補充</strong>：<code>BitFieldTypeModal</code> 內含兩個 popup 子元件——<code>RangePopup</code>（magnitude 欄位有效範圍）與 <code>ModeRangePopup</code>（mode 欄位有效範圍 + segments）。<code>RangePopup</code> 最上方新增一個 <code>&lt;select&gt;</code> 單選下拉，用於選擇該欄位的<strong>解讀格式</strong>（Unsigned / Signed；當 <code>width === 32</code> 時額外出現 FP32）。<code>StatsPanel</code> 除 mode / magnitude 兩種 <code>Histogram</code> 外，magnitude 卡片底部「詳細曲線」展開後會渲染 <code>ValueCurve</code>。<code>Histogram</code> 與 <code>ValueCurve</code> 的介面在 v0.44 由 <code>interpretAs:'int'|'fp32'</code> 改為 <code>isFloat:boolean</code>（值已在上游 <code>StatsPanel</code> / <code>OverallPanel</code> 先以 <code>interpretValue</code> 解讀），同時移除了統計分頁內舊的 Int / FP32 切換按鈕。</p>
+</blockquote>
 
 <h3>2.2 前端目錄結構（實作後）</h3>
 <pre><code>frontend/src/
@@ -280,7 +288,7 @@ graph TD
 │   ├── zh-TW.json
 │   └── en.json
 ├── hooks/
-│   └── useBitFieldTypes.ts      # localStorage 包裝
+│   └── useBitFieldTypes.ts      # localStorage 包裝 + 共用 helper（interpretValue / formatBounds 等）
 ├── mock/
 │   └── data.ts                  # 開發用 mock 資料
 ├── styles/
@@ -293,7 +301,9 @@ graph TD
 │   ├── charts/
 │   │   ├── Heatmap2D.tsx        # 兩 register 2D 熱力圖
 │   │   ├── Scatter.tsx          # 兩 register 散佈圖
-│   │   └── Histogram.tsx        # 直方圖
+│   │   ├── Histogram.tsx        # 直方圖（isFloat prop）
+│   │   ├── ValueCurve.tsx       # magnitude 詳細曲線（isFloat prop）
+│   │   └── heatmapData.ts       # 熱力圖純資料模組（分箱 / 自適應）
 │   └── results/
 │       ├── ResultsTable.tsx
 │       ├── DualRegisterChart.tsx
@@ -307,6 +317,18 @@ graph TD
     ├── Analyze.tsx
     ├── Results.tsx              # 容器：Tab 切換 + 共用 state
     └── History.tsx</code></pre>
+
+<blockquote>
+  <p><strong>v0.44 <code>useBitFieldTypes.ts</code> 共用 helper</strong>：此 hook 除了包裝 localStorage（每個 register 一份的 <code>TypeMap</code> 與 <code>RangeMap</code>）外，另對外匯出多個被多個元件共用的純函式：</p>
+  <ul>
+    <li><code>interpretValue(raw, width, format)</code>：把後端存的 unsigned 原始值依欄位 <code>format</code> 解讀為實際數值。<code>sint</code> 用二補數（<code>raw &gt;= 2^(w-1) ? raw - 2^w : raw</code>）；<code>fp32</code> 用 <code>Uint32Array</code> / <code>Float32Array</code> 重新解讀 32-bit 位元樣式為浮點；<code>uint</code>（預設）原樣回傳。</li>
+    <li><code>formatBounds(width, format)</code>：依格式回傳理論上下限——<code>uint</code> 為 <code>0 ~ 2^w-1</code>、<code>sint</code> 為 <code>-2^(w-1) ~ 2^(w-1)-1</code>；fp32 沿用 unsigned 界線。所有上限計算皆以 <code>2 ** w</code>（而非 <code>1 &lt;&lt; w</code>）避免 width=31 / 32 時的 32-bit 有號位移溢位。</li>
+    <li><code>validValueCount(range, width)</code>：涵蓋率分母，v0.44 起改為 format-aware（未自訂的那一端改用 <code>formatBounds</code> 預設，signed 下限為負）。</li>
+    <li>既有 <code>parseSegments</code> / <code>isValueInRange</code> 維持不變。</li>
+  </ul>
+  <p><code>FieldRange</code> 型別新增 <code>format?: ValueFormat</code>（<code>'uint' | 'sint' | 'fp32'</code>），隨 <code>RangeMap</code> 一併存入 localStorage。後端<strong>永遠</strong>存 unsigned 原始值，<code>format</code> 只改變前端的解讀方式。</p>
+  <p><strong>套用點</strong>（皆在比較 / 統計前先呼叫 <code>interpretValue</code>）：<code>StatsPanel</code>（先解讀再 <code>computeStats</code> / 範圍過濾 / 直方圖）、<code>OverallPanel</code>（解讀後算 min/max/不同值/涵蓋率，理論範圍用 <code>formatBounds</code>）、超範圍警告（<code>Results.tsx</code> 與 <code>ResultsTable</code> 高亮判斷）。<strong>不套用</strong>：主資料表儲存格與 2D 熱力圖 / 散佈圖，維持顯示原始 unsigned 值。</p>
+</blockquote>
 
 <h3>2.3 後端服務分層（規劃中）</h3>
 
@@ -357,7 +379,7 @@ graph TD
 </nav>
 
 <footer>
-  FPGA Register Analyzer Detailed Design — Part 1　|　v0.4.0　|　Aaron Hsueh
+  FPGA Register Analyzer Detailed Design — Part 1　|　v0.44　|　2026-06-25　|　Aaron Hsueh
 </footer>
 
 </body>

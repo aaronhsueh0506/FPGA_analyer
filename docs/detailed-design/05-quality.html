@@ -187,7 +187,7 @@
 
 <header class="doc-header">
   <h1>FPGA Register Analyzer — 系統詳細設計</h1>
-  <div class="meta">版本：v0.4.0　|　第 5 份：品質屬性　|　<a href="index.html">← 回索引</a></div>
+  <div class="meta">版本：v0.44　|　日期：2026-06-25　|　開發者：Aaron Hsueh　|　第 5 份：品質屬性　|　<a href="index.html">← 回索引</a></div>
 </header>
 
 <nav class="nav-bar">
@@ -244,6 +244,22 @@ graph TD
   <li>大檔上傳逾時：顯示「處理中」spinner，超過 60s 提示可能仍在後端處理</li>
   <li>JSON 解析失敗：fallback 顯示原始錯誤碼</li>
 </ul>
+
+<h3>9.5 ErrorBoundary 與經驗教訓</h3>
+
+<p>結果頁的 Tab 內容（<code>Results.tsx</code>）以 React <code>ErrorBoundary</code>（<code>frontend/src/components/ErrorBoundary.tsx</code>）包覆，任一 Tab 在渲染期間丟出例外時，只會把該區塊降級為錯誤畫面，而不會讓整頁白屏。這在 v0.44 開發期間實際攔下一個會讓統計分頁崩潰的 bug：</p>
+
+<table>
+  <thead><tr><th>項目</th><th>內容</th></tr></thead>
+  <tbody>
+    <tr><td>症狀</td><td>開啟「統計分析」Tab 時整個 Tab 崩潰，ErrorBoundary 攔截到 <code>RangeError: Array length must be a positive integer</code>。</td></tr>
+    <tr><td>根因</td><td>bit width = 31 的欄位計算理論最大值時用了 <code>(1 &lt;&lt; 31) - 1</code>。JS 的 <code>&lt;&lt;</code> 是 <strong>32-bit 帶號</strong> 位移，<code>1 &lt;&lt; 31</code> 會溢位成負數（<code>-2147483648</code>），導致 <code>bitMax</code> 變成負值；下游以 <code>bitMax + 1</code> 之類的長度建立陣列（<code>new Array(size)</code>）時，<code>size</code> 為負，丟出 <code>RangeError</code>。</td></tr>
+    <tr><td>修正</td><td>所有 <code>bitMax</code> / 理論上限計算一律改用 <code>2 ** w</code>（不再用 <code>1 &lt;&lt; w</code>），避免帶號位移溢位：涵蓋 <code>formatBounds()</code>、<code>validValueCount()</code>、<code>computeBitMax</code>、<code>safeMaxValue</code>、<code>heatmapData</code> 與 mock 資料產生。<code>formatBounds()</code> 對 32-bit 直接回傳 <code>0xffffffff</code>、其餘回傳 <code>(2 ** width) - 1</code>。</td></tr>
+    <tr><td>防禦性護欄</td><td><code>Histogram.tsx</code> 的整數小值分支在建立 bar 陣列前先檢查 <code>maxValue &gt;= minValue</code>（<code>size = maxValue - minValue + 1</code> 才會是正數）；條件不成立則退回連續分箱，杜絕負長度陣列。</td></tr>
+  </tbody>
+</table>
+
+<p><strong>教訓</strong>：JavaScript 位元運算符（<code>&lt;&lt;</code>、<code>&gt;&gt;</code>、<code>|</code>、<code>&amp;</code>）一律以 32-bit <strong>帶號</strong> 整數運算，處理可能達 32 位寬的暫存器欄位時，凡涉及「2 的 n 次方」務必改用 <code>2 ** n</code> 指數運算，而非位移。同時對任何「以計算結果當作陣列長度」的程式碼加上正數護欄，配合 ErrorBoundary 讓單一元件的錯誤不擴散成全頁崩潰。</p>
 
 <h2 id="sec-10">10. 效能考量</h2>
 
@@ -316,10 +332,24 @@ graph TD
 
 <h2 id="sec-12">12. 文件變更歷程</h2>
 
+<p>下表彙整專案自首版起的演進（細節以 <a href="../architecture.html">architecture.html</a> 的「變更歷程」為準）：</p>
+
 <table>
-  <thead><tr><th>版本</th><th>日期</th><th>變更</th></tr></thead>
+  <thead><tr><th>版本</th><th>日期</th><th>變更摘要</th></tr></thead>
   <tbody>
-    <tr><td>v0.4.0</td><td>2026-05-14</td><td>首版 — 對應 architecture v0.3.0；含序列圖、資料流圖、狀態圖、API contract、演算法</td></tr>
+    <tr><td>v0.1</td><td>2026-05-14</td><td>基礎骨架：五頁面（Dashboard / Registers / Analyze / Results / History）+ 左側 sidebar + i18n（zh-TW / en）+ 版本資訊 Modal。</td></tr>
+    <tr><td>v0.2</td><td>2026-05</td><td>大量上傳（單 batch 最多 2000 dat）+ 資料夾選擇器；表格 prefix / case range / 欄位篩選 / 分頁；新增 bit field 類型 modal 與組合分析。</td></tr>
+    <tr><td>v0.3</td><td>2026-05</td><td>Overall Tab（基本摘要、類型分佈、Magnitude range 涵蓋率、組合分析 Top-10）；統計分析加 Magnitude 直方圖 + stats 摘要；類型新增 Others（Mode / Magnitude / Others 三類）。</td></tr>
+    <tr><td>v0.4.0</td><td>2026-05-14</td><td>本詳細設計文件首版 — 對應 architecture v0.3.0；含序列圖、資料流圖、狀態圖、API contract、演算法。</td></tr>
+    <tr><td>v0.5–v0.8</td><td>2026-05</td><td>UI 微調：Modal 加寬、Magnitude 直方圖 Int / FP32 toggle、表格數值置中、散佈圖預設 Scatter、2D Heatmap category 軸與 binning 調整、ValueCurve 平滑折線圖。</td></tr>
+    <tr><td>v0.9–v0.20</td><td>2026-05</td><td>高斯熱力圖導入（heatmap.js）：雙層架構、白畫面修正、ESM / UMD 載入策略、position override 修正、銳利度微調，最終改連續軸（移除固定 binning）。</td></tr>
+    <tr><td>v0.21–v0.22</td><td>2026-05</td><td>2D Heatmap 量化（step=5）+ Colorbar；後端 Excel 以 magic bytes 偵測格式（OLE2 / ZIP）+ IRM / 密碼保護錯誤提示。</td></tr>
+    <tr><td>v0.23–v0.31</td><td>2026-05/06</td><td>Register 版本命名、表格自然排序、Case Range 改 ID 過濾、UI 偏好持久化（localStorage）、Bit Field 預設分類規則擴充、時區修正、Bit Field 有效範圍設定與超範圍警告、未知 address 改全批次摘要。</td></tr>
+    <tr><td>v0.34–v0.36</td><td>2026-06</td><td>組合分析顯示修正、Mode 直方圖範圍篩選、熱力圖 radius / blur 連續分布調整、Test Case ID 改從資料夾名稱取得、預設分類規則再擴充。</td></tr>
+    <tr><td>v0.37–v0.41</td><td>2026-06</td><td>Magnitude 直方圖套用手動上下限、TestCase ID 路徑萃取演算法強化、結果表格值篩選（單一 → 多條件 AND）。</td></tr>
+    <tr><td>v0.42</td><td>2026-06</td><td>Mode bit field 片段有效範圍（<code>segments</code> / <code>parsedSegments</code>），新增 <code>parseSegments</code> / <code>isValueInRange</code> / <code>validValueCount</code> 共用函式；Overall 加 Mode Segment Coverage。</td></tr>
+    <tr><td>v0.43</td><td>2026-06</td><td>自適應熱力圖 + 散佈圖資源預算分區（新增 <code>heatmapData.ts</code>、重寫 <code>Heatmap2D</code>、對數著色、0.5MB 資源上限線、X/Y 對調）；熱力圖格內字體可調（v0.43.2：數字 +/− 微調框 6–28px + 顯示數字開關）。</td></tr>
+    <tr><td><strong>v0.44</strong></td><td><strong>2026-06-25</strong></td><td><strong>每欄位數值解讀格式（<code>ValueFormat = 'uint' | 'sint' | 'fp32'</code>）</strong>：magnitude 欄位可選 Unsigned / Signed / FP32（FP32 限 width=32）；新增共用 helper <code>interpretValue()</code> / <code>formatBounds()</code>，套用於統計、Overall 涵蓋率、超範圍警告（主資料表與 2D 熱力圖維持原始 unsigned 顯示）；圖表介面由 <code>interpretAs</code> 改為 <code>isFloat</code>。<strong>並修正 width=31 帶號位移溢位（<code>(1&lt;&lt;31)-1</code> 變負值）導致統計分頁崩潰的 bug</strong>，全面改用 <code>2 ** w</code> 並於 Histogram 加負長度護欄（見 §9.5）；2D 熱力圖格內字體上限 28 → 40px。</td></tr>
   </tbody>
 </table>
 
@@ -332,7 +362,7 @@ graph TD
 </nav>
 
 <footer>
-  FPGA Register Analyzer Detailed Design — Part 5　|　v0.4.0　|　Aaron Hsueh
+  FPGA Register Analyzer Detailed Design — Part 5　|　v0.44　|　Aaron Hsueh
 </footer>
 
 </body>
