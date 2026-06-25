@@ -252,7 +252,7 @@ function makeSeededRandom(seed: number) {
  */
 function generateRow(rand: () => number, bitFields: BitFieldDef[]): number[] {
   return bitFields.map((bf) => {
-    const max = (1 << Math.min(bf.width, 31)) - 1
+    const max = (2 ** Math.min(bf.width, 31)) - 1 // 2**w 避免 width=31 時 1<<31 溢位成負數
     const type = defaultBitFieldType(bf)
     if (type === 'mode') {
       const cap = Math.min(max + 1, 4)
@@ -306,8 +306,8 @@ export function generateMockBatchDetail(batchId: number): BatchDetail {
 }
 
 export const versionInfo = {
-  version: 'v0.43.2',
-  releaseDate: '2026-06-24',
+  version: 'v0.44',
+  releaseDate: '2026-06-25',
   author: 'Aaron Hsueh',
   system: 'FPGA Register Analyzer'
 }

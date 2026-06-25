@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BitFieldDef, BitFieldType } from '../../mock/data'
 import type { RangeMap } from '../../hooks/useBitFieldTypes'
+import { interpretValue } from '../../hooks/useBitFieldTypes'
 
 type Format = 'hex' | 'dec'
 
@@ -41,13 +42,15 @@ function extractCaseNumber(testCase: string, prefix: string): string {
   return filename
 }
 
-function isOutOfRange(value: number, fieldName: string, types?: Record<string, BitFieldType>, rangeMap?: RangeMap): boolean {
+// 顯示用的儲存格數值維持原始 unsigned；此處僅依欄位格式解讀後判斷是否超出有效範圍（決定紅色高亮）。
+function isOutOfRange(value: number, bf: BitFieldDef, types?: Record<string, BitFieldType>, rangeMap?: RangeMap): boolean {
   if (!types || !rangeMap) return false
-  if (types[fieldName] !== 'magnitude') return false
-  const r = rangeMap[fieldName]
+  if (types[bf.name] !== 'magnitude') return false
+  const r = rangeMap[bf.name]
   if (!r) return false
-  if (r.min !== undefined && value < r.min) return true
-  if (r.max !== undefined && value > r.max) return true
+  const v = interpretValue(value, bf.width, r.format)
+  if (r.min !== undefined && v < r.min) return true
+  if (r.max !== undefined && v > r.max) return true
   return false
 }
 
@@ -230,13 +233,13 @@ export default function ResultsTable({
                   </td>
                   {visibleIndices.map((idx) => {
                     const v = row.values[idx]
-                    const oor = isOutOfRange(v, bitFields[idx].name, types, rangeMap)
+                    const oor = isOutOfRange(v, bitFields[idx], types, rangeMap)
                     return (
                       <td
                         key={idx}
                         className="mono"
                         style={oor ? { background: 'rgba(220, 38, 38, 0.12)', color: '#dc2626' } : undefined}
-                        title={oor ? `Out of range [${rangeMap?.[bitFields[idx].name]?.min ?? '—'}, ${rangeMap?.[bitFields[idx].name]?.max ?? '—'}]` : undefined}
+                        title={oor ? `Out of range: ${interpretValue(v, bitFields[idx].width, rangeMap?.[bitFields[idx].name]?.format)} not in [${rangeMap?.[bitFields[idx].name]?.min ?? '—'}, ${rangeMap?.[bitFields[idx].name]?.max ?? '—'}]` : undefined}
                       >
                         {formatValue(v)}
                       </td>

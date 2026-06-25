@@ -6,13 +6,44 @@ const STORAGE_PREFIX = 'fpga-bit-field-types-'
 const RANGE_STORAGE_PREFIX = 'fpga-bit-field-ranges-'
 
 export type TypeMap = Record<string, BitFieldType>
+
+// 數值 (magnitude) 欄位的「解讀格式」：unsigned 整數 / signed 二補數 / IEEE-754 float (僅 32-bit)。
+// 後端永遠存 unsigned 原始值，此設定是前端「怎麼解讀」。
+export type ValueFormat = 'uint' | 'sint' | 'fp32'
+
 export interface FieldRange {
   min?: number
   max?: number
   segments?: string
   parsedSegments?: [number, number][]
+  format?: ValueFormat
 }
 export type RangeMap = Record<string, FieldRange>
+
+/** 把後端的 unsigned 原始值，依欄位格式解讀成實際數值（signed 可為負、fp32 為浮點）。 */
+export function interpretValue(raw: number, width: number, format?: ValueFormat): number {
+  if (format === 'sint') {
+    const w = Math.min(width, 32)
+    const signBit = 2 ** (w - 1)
+    return raw >= signBit ? raw - 2 ** w : raw
+  }
+  if (format === 'fp32') {
+    const buf = new ArrayBuffer(4)
+    new Uint32Array(buf)[0] = raw >>> 0
+    return new Float32Array(buf)[0]
+  }
+  return raw
+}
+
+/** 依格式回傳「理論上下限」（unsigned 0~2^w-1；signed -2^(w-1)~2^(w-1)-1）。fp32 無整數界線，沿用 unsigned。 */
+export function formatBounds(width: number, format?: ValueFormat): { min: number; max: number } {
+  if (format === 'sint') {
+    const w = Math.min(width, 32)
+    return { min: -(2 ** (w - 1)), max: 2 ** (w - 1) - 1 }
+  }
+  const max = width >= 32 ? 0xffffffff : (2 ** width) - 1 // 用 2**w 避免 width=31 時 1<<31 溢位成負數
+  return { min: 0, max }
+}
 
 export function parseSegments(
   input: string,
@@ -56,16 +87,14 @@ export function isValueInRange(value: number, range: FieldRange | undefined): bo
 }
 
 export function validValueCount(range: FieldRange | undefined, width: number): number {
-  const bitMax = width >= 32 ? 0xffffffff : (1 << width) - 1
+  // 依格式取理論上下限，未自訂的那一端用該格式預設（signed 下限為負，避免用 0 當下限算錯涵蓋率）
+  const bounds = formatBounds(width, range?.format)
   if (range?.parsedSegments && range.parsedSegments.length > 0) {
     return range.parsedSegments.reduce((sum, [lo, hi]) => sum + hi - lo + 1, 0)
   }
-  if (range?.min !== undefined || range?.max !== undefined) {
-    const lo = range.min ?? 0
-    const hi = range.max ?? bitMax
-    return hi - lo + 1
-  }
-  return bitMax + 1
+  const lo = range?.min ?? bounds.min
+  const hi = range?.max ?? bounds.max
+  return Math.max(0, hi - lo + 1)
 }
 
 function loadFromStorage(registerId: number | string): TypeMap | null {

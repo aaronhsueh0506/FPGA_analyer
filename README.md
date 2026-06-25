@@ -1,9 +1,10 @@
-# FPGA Register Analyzer — v0.43.2
+# FPGA Register Analyzer — v0.44
 
 A local web tool for analyzing FPGA test case results.
 
 ## Changelog
 
+- **v0.44** (2026-06-25): Added a per-field value **format** to magnitude bit fields, chosen in the valid-range popup: Unsigned, Signed (two's complement, any width), or FP32 (IEEE 754, 32-bit only) as a single-select dropdown. The backend still stores raw unsigned values; the format only changes how the frontend interprets them. Statistics (histogram, min/max/mean/median/stddev, value curve), Overall range coverage, and out-of-range warnings now reinterpret values per format — Signed allows a negative valid-range min, and a custom min/max drives the statistics histogram bounds. The old Int/FP32 toggle inside the Statistics tab is removed (folded into this format setting). When FP32 is selected the integer range inputs are disabled. The 2D heatmap in-cell count font upper limit is raised from 28 to 40px.
 - **v0.43.2** (2026-06-24): Reworked the 2D heatmap's number display. The in-cell count font is now a custom px stepper (typeable, clamped 6–28px) that affects only the in-cell numbers; axis tick labels return to a fixed size. Added a "Show Numbers" toggle to hide or show the in-cell counts (the font stepper disables when hidden).
 - **v0.43.1** (2026-06-23): Added a font size control (S/M/L/XL) to the 2D heatmap. One control scales both the in-cell count numbers and the axis tick labels; the default matches the previous look.
 - **v0.43.0** (2026-06-22): Reworked the distribution views. The 2D heatmap is now adaptive — a precise grid (one cell per value, in-cell counts) or a blurred KDE, with automatic bin sizing, a density control, log-scaled cell coloring so low counts stay visible, and a percentile color cap. The scatter plot shades the `W×H×fmt < 0.5MB` resource-budget zones (8/16/32-bit) and the heatmap overlays the same limit lines. Added an X/Y axis swap button.

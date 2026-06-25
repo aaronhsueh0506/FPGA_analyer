@@ -64,7 +64,7 @@ export function computeAxisStats(values: number[], width?: number): AxisStats {
   }
   const sortedDistinct = [...set].sort((a, b) => a - b)
   const distinct = sortedDistinct.length
-  const bitMax = width == null ? null : width >= 32 ? 0xffffffff : (1 << width) - 1
+  const bitMax = width == null ? null : width >= 32 ? 0xffffffff : (2 ** width) - 1 // 2**w 避免 width=31 溢位
   return {
     distinct,
     min: distinct ? sortedDistinct[0] : 0,

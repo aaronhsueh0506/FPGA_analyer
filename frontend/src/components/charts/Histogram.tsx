@@ -2,10 +2,11 @@ import ReactECharts from 'echarts-for-react'
 
 interface Props {
   title: string
+  // values 已依欄位格式解讀（signed 可為負、fp32 為浮點）。
   values: number[]
   maxValue: number
   minValue?: number
-  interpretAs?: 'int' | 'fp32'
+  isFloat?: boolean
   allowedValues?: number[]
 }
 
@@ -13,16 +14,7 @@ const BIN_COUNT = 20
 
 function safeMax(maxValue: number): number {
   if (maxValue >= 0xffffffff) return 0xffffffff
-  if (maxValue < 0) return 0
   return maxValue
-}
-
-function int32ToFloat32(raw: number): number {
-  const buf = new ArrayBuffer(4)
-  const u32 = new Uint32Array(buf)
-  const f32 = new Float32Array(buf)
-  u32[0] = raw >>> 0
-  return f32[0]
 }
 
 function formatFloat(f: number): string {
@@ -33,7 +25,7 @@ function formatFloat(f: number): string {
   return f.toExponential(2)
 }
 
-export default function Histogram({ title, values, maxValue: rawMaxValue, minValue = 0, interpretAs = 'int', allowedValues }: Props) {
+export default function Histogram({ title, values, maxValue: rawMaxValue, minValue = 0, isFloat = false, allowedValues }: Props) {
   const maxValue = safeMax(rawMaxValue)
   if (values.length === 0) {
     return (
@@ -58,9 +50,8 @@ export default function Histogram({ title, values, maxValue: rawMaxValue, minVal
   let labels: string[] = []
   let counts: number[] = []
 
-  if (interpretAs === 'fp32') {
-    const floatValues = values.map(v => int32ToFloat32(v))
-    const finite = floatValues.filter(f => isFinite(f))
+  if (isFloat) {
+    const finite = values.filter(f => isFinite(f))
     if (finite.length === 0) {
       labels = ['NaN/Inf']
       counts = [values.length]
@@ -76,14 +67,14 @@ export default function Histogram({ title, values, maxValue: rawMaxValue, minVal
         const hi = i === BIN_COUNT - 1 ? fMax : fMin + step * (i + 1)
         labels.push(`${formatFloat(lo)}~${formatFloat(hi)}`)
       }
-      for (const f of floatValues) {
+      for (const f of values) {
         if (!isFinite(f)) continue
         let idx = Math.floor(((f - fMin) / fRange) * BIN_COUNT)
         idx = Math.max(0, Math.min(BIN_COUNT - 1, idx))
         counts[idx]++
       }
     }
-  } else if (maxValue <= 20) {
+  } else if (maxValue >= minValue && maxValue - minValue <= 20) {
     if (allowedValues && allowedValues.length > 0) {
       const posIndex = new Map(allowedValues.map((v, i) => [v, i]))
       counts = new Array(allowedValues.length).fill(0)
@@ -93,14 +84,14 @@ export default function Histogram({ title, values, maxValue: rawMaxValue, minVal
         if (idx !== undefined) counts[idx]++
       }
     } else {
-      const size = maxValue + 1
+      const size = maxValue - minValue + 1
       counts = new Array(size).fill(0)
       labels = []
       for (let i = 0; i < size; i++) {
-        labels.push(String(i))
+        labels.push(String(minValue + i))
       }
       for (const v of values) {
-        const idx = Math.max(0, Math.min(size - 1, v))
+        const idx = Math.max(0, Math.min(size - 1, v - minValue))
         counts[idx]++
       }
     }

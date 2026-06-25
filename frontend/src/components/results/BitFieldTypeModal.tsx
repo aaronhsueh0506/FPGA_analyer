@@ -3,8 +3,8 @@ import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import type { BitFieldDef, BitFieldType } from '../../mock/data'
 import { defaultBitFieldType } from '../../mock/data'
-import type { TypeMap, RangeMap, FieldRange } from '../../hooks/useBitFieldTypes'
-import { parseSegments } from '../../hooks/useBitFieldTypes'
+import type { TypeMap, RangeMap, FieldRange, ValueFormat } from '../../hooks/useBitFieldTypes'
+import { parseSegments, formatBounds } from '../../hooks/useBitFieldTypes'
 
 interface Props {
   open: boolean
@@ -22,6 +22,7 @@ interface RangePopupState {
   width: number
   min: string
   max: string
+  format: ValueFormat
 }
 
 interface ModeRangePopupState {
@@ -35,7 +36,7 @@ interface ModeRangePopupState {
 function computeBitMax(width: number): number {
   if (width >= 32) return 0xffffffff
   if (width <= 0) return 0
-  return (1 << width) - 1
+  return (2 ** width) - 1 // 用 2**w 避免 width=31 時 1<<31 溢位成負數
 }
 
 function RangePopup({
@@ -44,24 +45,37 @@ function RangePopup({
   onClose,
 }: {
   state: RangePopupState
-  onApply: (name: string, min: string, max: string) => void
+  onApply: (name: string, min: string, max: string, format: ValueFormat) => void
   onClose: () => void
 }) {
   const { t } = useTranslation()
   const [min, setMin] = useState(state.min)
   const [max, setMax] = useState(state.max)
+  const [format, setFormat] = useState<ValueFormat>(state.format)
   const [error, setError] = useState<string | null>(null)
 
-  const bitMax = computeBitMax(state.width)
+  const isFp32 = format === 'fp32'
+  const bounds = formatBounds(state.width, format)
+
+  const changeFormat = (next: ValueFormat) => {
+    setFormat(next)
+    setError(null)
+    if (next === 'fp32') { setMin(''); setMax(''); return } // 浮點不適用整數範圍
+    // 換格式後，清掉超出新格式上下限的舊值，避免 Apply 卡在錯誤訊息
+    const b = formatBounds(state.width, next)
+    setMin((m) => (m !== '' && (Number(m) < b.min || Number(m) > b.max) ? '' : m))
+    setMax((m) => (m !== '' && (Number(m) < b.min || Number(m) > b.max) ? '' : m))
+  }
 
   const validate = (): string | null => {
+    if (isFp32) return null
     const minNum = min === '' ? undefined : Number(min)
     const maxNum = max === '' ? undefined : Number(max)
-    if (minNum !== undefined && (!Number.isInteger(minNum) || minNum < 0 || minNum > bitMax)) {
-      return t('results.bitFieldType.rangeErrorOutOfBounds', { max: bitMax })
+    if (minNum !== undefined && (!Number.isInteger(minNum) || minNum < bounds.min || minNum > bounds.max)) {
+      return t('results.bitFieldType.rangeErrorOutOfBounds', { min: bounds.min, max: bounds.max })
     }
-    if (maxNum !== undefined && (!Number.isInteger(maxNum) || maxNum < 0 || maxNum > bitMax)) {
-      return t('results.bitFieldType.rangeErrorOutOfBounds', { max: bitMax })
+    if (maxNum !== undefined && (!Number.isInteger(maxNum) || maxNum < bounds.min || maxNum > bounds.max)) {
+      return t('results.bitFieldType.rangeErrorOutOfBounds', { min: bounds.min, max: bounds.max })
     }
     if (minNum !== undefined && maxNum !== undefined && minNum > maxNum) {
       return t('results.bitFieldType.rangeErrorMinGtMax')
@@ -72,7 +86,7 @@ function RangePopup({
   const handleApply = () => {
     const err = validate()
     if (err) { setError(err); return }
-    onApply(state.fieldName, min, max)
+    onApply(state.fieldName, isFp32 ? '' : min, isFp32 ? '' : max, format)
     onClose()
   }
 
@@ -86,21 +100,36 @@ function RangePopup({
         <h3 className="modal-title" style={{ marginBottom: 4 }}>
           {t('results.bitFieldType.rangePopupTitle')}
         </h3>
-        <p className="mono" style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 4px' }}>
+        <p className="mono" style={{ fontSize: 12, color: 'var(--text-secondary)', margin: '0 0 12px' }}>
           {state.fieldName}
         </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 10 }}>
+          <span style={{ fontSize: 13, color: 'var(--text-secondary)' }}>
+            {t('results.bitFieldType.formatLabel')}
+          </span>
+          <select
+            autoFocus
+            value={format}
+            onChange={(e) => changeFormat(e.target.value as ValueFormat)}
+            style={{ fontSize: 13, padding: '5px 8px', flex: 1 }}
+          >
+            <option value="uint">{t('results.bitFieldType.formatUnsigned')}</option>
+            <option value="sint">{t('results.bitFieldType.formatSigned')}</option>
+            {state.width === 32 && <option value="fp32">{t('results.bitFieldType.formatFp32')}</option>}
+          </select>
+        </div>
         <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '0 0 16px' }}>
-          0 ~ {bitMax} ({state.width} bit)
+          {isFp32 ? `IEEE 754 float (${state.width} bit)` : `${bounds.min} ~ ${bounds.max} (${state.width} bit)`}
         </p>
-        <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr', gap: '10px 8px', alignItems: 'center' }}>
+        <div style={{ display: 'grid', gridTemplateColumns: '48px 1fr', gap: '10px 8px', alignItems: 'center', opacity: isFp32 ? 0.4 : 1 }}>
           <span style={{ fontSize: 13, color: 'var(--text-secondary)', textAlign: 'right' }}>
             {t('results.bitFieldType.colMin')}
           </span>
           <input
             type="number"
-            autoFocus
-            min={0}
-            max={bitMax}
+            min={bounds.min}
+            max={bounds.max}
+            disabled={isFp32}
             style={{ fontSize: 13, padding: '5px 8px', width: '100%' }}
             placeholder="—"
             value={min}
@@ -111,14 +140,20 @@ function RangePopup({
           </span>
           <input
             type="number"
-            min={0}
-            max={bitMax}
+            min={bounds.min}
+            max={bounds.max}
+            disabled={isFp32}
             style={{ fontSize: 13, padding: '5px 8px', width: '100%' }}
             placeholder="—"
             value={max}
             onChange={(e) => { setMax(e.target.value); setError(null) }}
           />
         </div>
+        {isFp32 && (
+          <p style={{ fontSize: 11, color: 'var(--text-tertiary)', margin: '8px 0 0' }}>
+            {t('results.bitFieldType.formatFp32Hint')}
+          </p>
+        )}
         {error && (
           <div className="warning-banner" style={{ marginTop: 10, padding: '6px 10px', fontSize: 12 }}>
             {error}
@@ -166,9 +201,9 @@ function ModeRangePopup({
     const minNum = min === '' ? undefined : Number(min)
     const maxNum = max === '' ? undefined : Number(max)
     if (minNum !== undefined && (!Number.isInteger(minNum) || minNum < 0 || minNum > bitMax))
-      return t('results.bitFieldType.rangeErrorOutOfBounds', { max: bitMax })
+      return t('results.bitFieldType.rangeErrorOutOfBounds', { min: 0, max: bitMax })
     if (maxNum !== undefined && (!Number.isInteger(maxNum) || maxNum < 0 || maxNum > bitMax))
-      return t('results.bitFieldType.rangeErrorOutOfBounds', { max: bitMax })
+      return t('results.bitFieldType.rangeErrorOutOfBounds', { min: 0, max: bitMax })
     if (minNum !== undefined && maxNum !== undefined && minNum > maxNum)
       return t('results.bitFieldType.rangeErrorMinGtMax')
     return null
@@ -373,12 +408,12 @@ export default function BitFieldTypeModal({
     setDraft((prev) => ({ ...prev, [name]: type }))
   }
 
-  const applyRangeParts = (name: string, minRaw: string, maxRaw: string) => {
+  const applyRangeParts = (name: string, minRaw: string, maxRaw: string, format: ValueFormat) => {
     const min = minRaw === '' ? undefined : Number(minRaw)
     const max = maxRaw === '' ? undefined : Number(maxRaw)
     setDraftRanges((prev) => ({
       ...prev,
-      [name]: { min, max }
+      [name]: { min, max, format: format === 'uint' ? undefined : format }
     }))
   }
 
@@ -403,6 +438,7 @@ export default function BitFieldTypeModal({
         width: bf.width,
         min: r.min !== undefined ? String(r.min) : '',
         max: r.max !== undefined ? String(r.max) : '',
+        format: r.format ?? 'uint',
       })
     }
   }
@@ -423,17 +459,20 @@ export default function BitFieldTypeModal({
   const hasRange = (name: string) => {
     const r = draftRanges[name]
     if (!r) return false
-    return r.min !== undefined || r.max !== undefined || (r.parsedSegments && r.parsedSegments.length > 0)
+    return r.min !== undefined || r.max !== undefined || (r.parsedSegments && r.parsedSegments.length > 0) || (r.format !== undefined && r.format !== 'uint')
   }
 
   const rangeLabel = (name: string) => {
     const r = draftRanges[name]
     if (!r) return t('results.bitFieldType.rangeDefault')
+    const fmtTag = r.format === 'sint' ? 's' : r.format === 'fp32' ? 'f32' : ''
     if (r.parsedSegments && r.parsedSegments.length > 0) return r.segments ?? 'seg'
-    if (r.min === undefined && r.max === undefined) return t('results.bitFieldType.rangeDefault')
+    const hasMinMax = r.min !== undefined || r.max !== undefined
+    if (!hasMinMax) return fmtTag || t('results.bitFieldType.rangeDefault')
     const lo = r.min !== undefined ? String(r.min) : '—'
     const hi = r.max !== undefined ? String(r.max) : '—'
-    return `${lo} ~ ${hi}`
+    const body = `${lo} ~ ${hi}`
+    return fmtTag ? `${fmtTag} · ${body}` : body
   }
 
   return createPortal(

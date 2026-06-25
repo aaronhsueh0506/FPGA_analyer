@@ -5,7 +5,7 @@ import { getBatch, downloadCsvUrl, downloadXlsxUrl, type BatchDetailAPI } from '
 import { formatLocalDate } from '../api/dateUtils'
 import type { BatchSummary, BitFieldDef } from '../mock/data'
 import { defaultBitFieldType } from '../mock/data'
-import { useBitFieldTypes } from '../hooks/useBitFieldTypes'
+import { useBitFieldTypes, interpretValue } from '../hooks/useBitFieldTypes'
 import ResultsTable from '../components/results/ResultsTable'
 import DualRegisterChart from '../components/results/DualRegisterChart'
 import StatsPanel from '../components/results/StatsPanel'
@@ -155,7 +155,7 @@ export default function Results() {
         if (types[bf.name] !== 'magnitude') continue
         const r = rangeMap[bf.name]
         if (!r) continue
-        const v = row.values[i] ?? 0
+        const v = interpretValue(row.values[i] ?? 0, bf.width, r.format)
         if ((r.min !== undefined && v < r.min) || (r.max !== undefined && v > r.max)) {
           violations.push({ testCase: row.testCase, field: bf.name, value: v, min: r.min, max: r.max })
         }

@@ -30,7 +30,7 @@ const CAP_OPTIONS: Cap[] = [100, 95, 90, 80]
 
 // in-cell count number font is user-adjustable; axis tick labels stay fixed
 const COUNT_FONT_MIN = 6
-const COUNT_FONT_MAX = 28
+const COUNT_FONT_MAX = 40
 const COUNT_FONT_DEFAULT = 10 // approx. prior "M" in-cell size, keeps the look
 const AXIS_FONT_PX = 10 // axis tick labels fixed (pre-v0.43.1 behaviour)
 const clampFont = (n: number) => Math.min(COUNT_FONT_MAX, Math.max(COUNT_FONT_MIN, Math.round(n)))

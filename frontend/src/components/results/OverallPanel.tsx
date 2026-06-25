@@ -2,8 +2,8 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import type { BatchSummary, BitFieldDef } from '../../mock/data'
-import type { TypeMap, RangeMap } from '../../hooks/useBitFieldTypes'
-import { validValueCount, isValueInRange } from '../../hooks/useBitFieldTypes'
+import type { TypeMap, RangeMap, ValueFormat } from '../../hooks/useBitFieldTypes'
+import { validValueCount, isValueInRange, interpretValue, formatBounds } from '../../hooks/useBitFieldTypes'
 
 interface Props {
   summary: BatchSummary
@@ -16,10 +16,10 @@ interface Props {
 const MIN_FIELDS = 2
 const TOP_N = 10
 
-function computeTheoreticalMax(width: number): number {
-  if (width >= 32) return 0xffffffff
-  if (width <= 0) return 0
-  return (1 << width) - 1
+function fmtNum(n: number): string {
+  if (!isFinite(n)) return '—'
+  if (Number.isInteger(n)) return String(n)
+  return n.toPrecision(4)
 }
 
 export default function OverallPanel({ summary, rows, bitFields, types, rangeMap }: Props) {
@@ -43,6 +43,7 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
     const out: Array<{
       name: string
       width: number
+      format: ValueFormat
       bitMin: number
       bitMax: number
       effectiveMin: number
@@ -56,10 +57,13 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
     for (let i = 0; i < bitFields.length; i++) {
       const bf = bitFields[i]
       if (types[bf.name] !== 'magnitude') continue
-      const bitMax = computeTheoreticalMax(bf.width)
-      const bitMin = 0
-      const userMax = rangeMap[bf.name]?.max
-      const userMin = rangeMap[bf.name]?.min
+      const fr = rangeMap[bf.name]
+      const format: ValueFormat = fr?.format ?? 'uint'
+      const bounds = formatBounds(bf.width, format)
+      const bitMax = bounds.max
+      const bitMin = bounds.min
+      const userMax = fr?.max
+      const userMin = fr?.min
       const effectiveMax = userMax !== undefined ? userMax : bitMax
       const effectiveMin = userMin !== undefined ? userMin : bitMin
       const hasCustomRange = userMin !== undefined || userMax !== undefined
@@ -67,6 +71,7 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
         out.push({
           name: bf.name,
           width: bf.width,
+          format,
           bitMin,
           bitMax,
           effectiveMin,
@@ -83,19 +88,21 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
       let mx = -Infinity
       const uniqInRange = new Set<number>()
       for (const r of rows) {
-        const v = r.values[i]
-        if (typeof v !== 'number') continue
+        const raw = r.values[i]
+        if (typeof raw !== 'number') continue
+        const v = interpretValue(raw, bf.width, format)
         if (v < mn) mn = v
         if (v > mx) mx = v
-        if (isValueInRange(v, rangeMap[bf.name])) uniqInRange.add(v)
+        if (isValueInRange(v, fr)) uniqInRange.add(v)
       }
       const actualMin = mn === Infinity ? 0 : mn
       const actualMax = mx === -Infinity ? 0 : mx
-      const refSpan = validValueCount(rangeMap[bf.name], bf.width)
+      const refSpan = validValueCount(fr, bf.width)
       const pctNum = refSpan > 0 ? (uniqInRange.size / refSpan) * 100 : 0
       out.push({
         name: bf.name,
         width: bf.width,
+        format,
         bitMin,
         bitMax,
         effectiveMin,
@@ -285,7 +292,9 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
                     <td className="mono text-left">{row.name}</td>
                     <td className="mono">{row.width}</td>
                     <td className="mono">
-                      {row.hasCustomRange ? (
+                      {row.format === 'fp32' ? (
+                        'FP32'
+                      ) : row.hasCustomRange ? (
                         <>
                           {row.effectiveMin}~{row.effectiveMax}
                           <span style={{ color: 'var(--text-tertiary)', fontSize: 11 }}>
@@ -296,10 +305,10 @@ export default function OverallPanel({ summary, rows, bitFields, types, rangeMap
                         `${row.bitMin}~${row.bitMax}`
                       )}
                     </td>
-                    <td className="mono">{row.actualMin}</td>
-                    <td className="mono">{row.actualMax}</td>
+                    <td className="mono">{fmtNum(row.actualMin)}</td>
+                    <td className="mono">{fmtNum(row.actualMax)}</td>
                     <td className="mono">{row.uniqueCount}</td>
-                    <td className="mono">{row.coveragePct}%</td>
+                    <td className="mono">{row.format === 'fp32' ? '—' : `${row.coveragePct}%`}</td>
                   </tr>
                 ))}
               </tbody>

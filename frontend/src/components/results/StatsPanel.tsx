@@ -1,12 +1,10 @@
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { BitFieldDef } from '../../mock/data'
-import type { TypeMap, RangeMap } from '../../hooks/useBitFieldTypes'
-import { isValueInRange } from '../../hooks/useBitFieldTypes'
+import type { TypeMap, RangeMap, ValueFormat } from '../../hooks/useBitFieldTypes'
+import { isValueInRange, interpretValue, formatBounds } from '../../hooks/useBitFieldTypes'
 import Histogram from '../charts/Histogram'
 import ValueCurve from '../charts/ValueCurve'
-
-type InterpretMode = 'int' | 'fp32'
 
 interface Props {
   rows: Array<{ testCase: string; values: number[] }>
@@ -32,7 +30,7 @@ function computeStats(rawValues: (number | undefined | null)[]) {
 function safeMaxValue(width: number): number {
   if (width >= 32) return 0xffffffff
   if (width <= 0) return 0
-  return (1 << width) - 1
+  return (2 ** width) - 1 // 用 2**w 避免 width=31 時 1<<31 溢位成負數
 }
 
 function fmt(n: number | undefined | null): string {
@@ -43,12 +41,7 @@ function fmt(n: number | undefined | null): string {
 
 export default function StatsPanel({ rows, bitFields, types, rangeMap }: Props) {
   const { t } = useTranslation()
-  const [interpretMap, setInterpretMap] = useState<Record<string, InterpretMode>>({})
   const [detailOpen, setDetailOpen] = useState<Record<string, boolean>>({})
-
-  const setInterpret = (name: string, mode: InterpretMode) => {
-    setInterpretMap((prev) => ({ ...prev, [name]: mode }))
-  }
 
   const toggleDetail = (name: string) => {
     setDetailOpen((prev) => ({ ...prev, [name]: !prev[name] }))
@@ -116,16 +109,18 @@ export default function StatsPanel({ rows, bitFields, types, rangeMap }: Props) 
             {magnitudeIndices.map(({ bf, i }) => {
               const allValues = rows.map((r) => r.values[i])
               const r = rangeMap[bf.name]
-              const bitMax = safeMaxValue(bf.width)
-              const effectiveMin = r?.min !== undefined ? r.min : 0
-              const effectiveMax = r?.max !== undefined ? r.max : bitMax
-              const hasRange = r && (r.min !== undefined || r.max !== undefined)
-              const values = hasRange
-                ? allValues.filter((v): v is number => typeof v === 'number' && isValueInRange(v, r))
-                : allValues
+              const format: ValueFormat = r?.format ?? 'uint'
+              const isFloat = format === 'fp32'
+              const hasRange = !!r && (r.min !== undefined || r.max !== undefined || (!!r.parsedSegments && r.parsedSegments.length > 0))
+              // 先依格式解讀，再做範圍過濾與統計（自訂 min/max 都存在「解讀後」的數值域）
+              const interpreted = allValues
+                .filter((v): v is number => typeof v === 'number')
+                .map((v) => interpretValue(v, bf.width, format))
+              const values = hasRange ? interpreted.filter((v) => isValueInRange(v, r)) : interpreted
               const stats = computeStats(values)
-              const is32 = bf.width === 32 && !hasRange
-              const interpret: InterpretMode = (is32 ? interpretMap[bf.name] : undefined) || 'int'
+              const bounds = formatBounds(bf.width, format)
+              const effectiveMin = r?.min !== undefined ? r.min : bounds.min
+              const effectiveMax = r?.max !== undefined ? r.max : bounds.max
               const isDetailOpen = !!detailOpen[bf.name]
               return (
                 <div key={bf.name} className="histogram-card">
@@ -137,29 +132,13 @@ export default function StatsPanel({ rows, bitFields, types, rangeMap }: Props) 
                       {bf.name}{' '}
                       <span style={{ color: 'var(--text-tertiary)', fontWeight: 400 }}>[{bf.width}b]</span>
                     </span>
-                    <span
-                      className="inline-toggle"
-                      style={{ fontSize: 11 }}
-                      title={!is32 ? t('results.stats.fp32OnlyFor32bit') : undefined}
-                    >
-                      <button
-                        className={interpret === 'int' ? 'active' : ''}
-                        onClick={() => setInterpret(bf.name, 'int')}
-                        style={{ padding: '3px 8px', fontSize: 11 }}
-                      >
-                        {t('results.stats.interpretInt')}
-                      </button>
-                      <button
-                        className={interpret === 'fp32' ? 'active' : ''}
-                        onClick={() => is32 && setInterpret(bf.name, 'fp32')}
-                        disabled={!is32}
-                        style={{ padding: '3px 8px', fontSize: 11, opacity: is32 ? 1 : 0.45, cursor: is32 ? 'pointer' : 'not-allowed' }}
-                      >
-                        {t('results.stats.interpretFP32')}
-                      </button>
-                    </span>
+                    {format !== 'uint' && (
+                      <span style={{ fontSize: 11, color: 'var(--text-tertiary)', fontWeight: 400 }}>
+                        {format === 'sint' ? t('results.bitFieldType.formatSigned') : t('results.bitFieldType.formatFp32')}
+                      </span>
+                    )}
                   </div>
-                  <Histogram title="" values={values} maxValue={effectiveMax} minValue={effectiveMin} interpretAs={interpret} />
+                  <Histogram title="" values={values} maxValue={effectiveMax} minValue={effectiveMin} isFloat={isFloat} />
                   <div
                     style={{
                       display: 'grid',
@@ -187,7 +166,7 @@ export default function StatsPanel({ rows, bitFields, types, rangeMap }: Props) 
                     </button>
                   </div>
                   {isDetailOpen && (
-                    <ValueCurve values={values} interpretAs={interpret} />
+                    <ValueCurve values={values} isFloat={isFloat} />
                   )}
                 </div>
               )

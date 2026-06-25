@@ -1,20 +1,13 @@
 import ReactECharts from 'echarts-for-react'
 
 interface Props {
+  // values 已依欄位格式解讀（signed 可為負、fp32 為浮點）。
   values: number[]
-  interpretAs?: 'int' | 'fp32'
+  isFloat?: boolean
 }
 
 const CURVE_BIN_THRESHOLD = 50
 const CURVE_BIN_COUNT = 30
-
-function int32ToFloat32(raw: number): number {
-  const buf = new ArrayBuffer(4)
-  const u32 = new Uint32Array(buf)
-  const f32 = new Float32Array(buf)
-  u32[0] = raw >>> 0
-  return f32[0]
-}
 
 function formatFloat(f: number): string {
   if (!isFinite(f)) return 'NaN/Inf'
@@ -24,7 +17,7 @@ function formatFloat(f: number): string {
   return f.toExponential(2)
 }
 
-export default function ValueCurve({ values, interpretAs = 'int' }: Props) {
+export default function ValueCurve({ values, isFloat = false }: Props) {
   if (values.length === 0) {
     return <div className="empty-state">No data</div>
   }
@@ -35,11 +28,8 @@ export default function ValueCurve({ values, interpretAs = 'int' }: Props) {
   let labels: string[]
   let counts: number[]
 
-  if (interpretAs === 'fp32') {
-    const entries: Array<[float: number, count: number]> = []
-    freqMap.forEach((count, raw) => {
-      entries.push([int32ToFloat32(raw), count])
-    })
+  if (isFloat) {
+    const entries: Array<[float: number, count: number]> = [...freqMap.entries()]
     entries.sort((a, b) => a[0] - b[0])
 
     if (entries.length > CURVE_BIN_THRESHOLD) {
